@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Photo } from "@/types/photo";
 
 interface Props {
-  photo: Photo;
+  photo: any;
   onClose: () => void;
 }
 

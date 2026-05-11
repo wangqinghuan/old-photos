@@ -1,8 +1,7 @@
-import type { Photo } from "@/types/photo";
 import PhotoList from "@/components/PhotoList";
 import photosData from "@/data/photos.json";
 
-const photos: Photo[] = photosData;
+const photos = photosData as any[];
 
 export default function Home() {
   return (

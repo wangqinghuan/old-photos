@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { Photo } from "@/types/photo";
 import PhotoModal from "./PhotoModal";
 
 interface Props {
-  photo: Photo;
+  photo: any;
 }
 
 export default function PhotoCard({ photo }: Props) {

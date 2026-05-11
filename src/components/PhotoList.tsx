@@ -1,10 +1,9 @@
 "use client";
 
-import type { Photo } from "@/types/photo";
 import PhotoCard from "./PhotoCard";
 
 interface Props {
-  photos: Photo[];
+  photos: any[];
 }
 
 export default function PhotoList({ photos }: Props) {
