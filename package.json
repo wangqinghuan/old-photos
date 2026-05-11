@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "wrangler pages deploy docs --project-name old-photos",
-    "deploy:cf": "CLOUDFLARE_API_TOKEN=$CF_TOKEN wrangler pages deploy docs --project-name old-photos"
+    "deploy": "wrangler pages deploy docs --project-name oldphotos"
   },
   "dependencies": {
     "@vitalets/google-translate-api": "^9.2.1",
