@@ -1,0 +1,97 @@
+import * as fs from "fs";
+import axios from "axios";
+
+const DATA_FILE = "src/data/photos.json";
+
+async function translate(text) {
+  if (!text || /[\u4e00-\u9fff]/.test(text)) return text;
+  try {
+    const { data } = await axios.get("https://translate.googleapis.com/translate_a/single", {
+      params: { client: "gtx", sl: "en", tl: "zh-CN", dt: "t", q: text },
+      timeout: 10000,
+    });
+    return data?.[0]?.[0]?.[0] || text;
+  } catch {
+    return text;
+  }
+}
+
+// Filter config
+const TOP_LEVEL_LIMIT = 25;
+const REPLY_MIN_SCORE = 15;
+
+function filterTopLevel(comments) {
+  const sorted = [...comments].sort((a, b) => (b.score || 0) - (a.score || 0));
+  return sorted.slice(0, TOP_LEVEL_LIMIT);
+}
+
+function filterReplies(comments) {
+  return comments.filter((c) => (c.score || 0) >= REPLY_MIN_SCORE);
+}
+
+async function processPost(post) {
+  if (!post.comments || !post.comments.length) return;
+
+  // 1. Filter top-level comments
+  post.comments = filterTopLevel(post.comments);
+
+  // 2. Recursively filter and translate
+  async function walk(arr) {
+    for (const c of arr) {
+      if (c.replies && c.replies.length) {
+        c.replies = filterReplies(c.replies);
+        await walk(c.replies);
+      }
+    }
+  }
+  await walk(post.comments);
+
+  // 3. Translate all English comments to Chinese
+  let translated = 0;
+  let skipped = 0;
+
+  async function translateWalk(arr) {
+    for (const c of arr) {
+      if (c.body && !/[\u4e00-\u9fff]/.test(c.body)) {
+        const orig = c.body;
+        c.body = await translate(c.body);
+        if (c.body !== orig) translated++;
+        else skipped++;
+        await new Promise((r) => setTimeout(r, 300)); // rate limit
+      } else {
+        skipped++;
+      }
+      if (c.replies) await translateWalk(c.replies);
+    }
+  }
+  await translateWalk(post.comments);
+
+  console.log(`  Translated: ${translated}, Skipped (already CN/empty): ${skipped}`);
+}
+
+async function main() {
+  const photos = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+
+  for (const post of photos) {
+    if (!post.comments?.length) continue;
+    console.log(`\nProcessing ${post.id} (${post.comments.length} top-level)...`);
+    await processPost(post);
+
+    // Count final stats
+    let total = 0, cn = 0;
+    function count(arr) {
+      for (const c of arr) {
+        total++;
+        if (/[\u4e00-\u9fff]/.test(c.body || "")) cn++;
+        if (c.replies) count(c.replies);
+      }
+    }
+    count(post.comments);
+    console.log(`  Final: ${total} total, ${cn} Chinese`);
+  }
+
+  fs.writeFileSync(DATA_FILE, JSON.stringify(photos, null, 2));
+  console.log(`\nSaved ${DATA_FILE}`);
+}
+
+main().catch(console.error);

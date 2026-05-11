@@ -1,0 +1,3022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>时光相册 | 老照片收藏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fafaf9;color:#1c1917;min-height:100vh;-webkit-font-smoothing:antialiased}
+@media(prefers-color-scheme:dark){body{background:#0c0a09;color:#fafaf9}}
+header{position:sticky;top:0;z-index:50;background:rgba(250,250,249,.9);backdrop-filter:blur(12px);border-bottom:1px solid #e7e5e4;padding:16px}
+@media(prefers-color-scheme:dark){header{background:rgba(12,10,9,.9);border-color:#292524}}
+header h1{font-size:1.25rem;font-weight:600;letter-spacing:-.02em}
+header p{font-size:.75rem;color:#a8a29e;margin-top:2px}
+.section{max-width:640px;margin:0 auto;padding:24px 16px}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.section-header h2{font-size:.875rem;font-weight:500;color:#a8a29e}
+.section-header span{font-size:.75rem;color:#a8a29e}
+.photo-grid{display:flex;flex-direction:column;gap:16px}
+.photo-card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e7e5e4;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .15s}
+.photo-card:active{transform:scale(.98)}
+@media(prefers-color-scheme:dark){.photo-card{background:#1c1917;border-color:#292524}}
+.photo-img{position:relative;aspect-ratio:4/3;background:#f5f5f4;overflow:hidden}
+@media(prefers-color-scheme:dark){.photo-img{background:#292524}}
+.photo-img img{width:100%;height:100%;object-fit:cover;display:block}
+.badge{position:absolute;padding:4px 8px;border-radius:999px;font-size:.75rem;color:#fff;font-family:monospace;backdrop-filter:blur(4px)}
+.badge-year{top:12px;right:12px;background:rgba(0,0,0,.7)}
+.badge-comments{bottom:12px;right:12px;background:rgba(59,130,246,.85);display:flex;align-items:center;gap:4px}
+.photo-info{padding:16px}
+.photo-info h3{font-size:1rem;font-weight:500;line-height:1.3}
+.photo-info p{margin-top:8px;font-size:.875rem;color:#a8a29e;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.photo-meta{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:.75rem;color:#a8a29e}
+.photo-meta .dot{color:#d6d3d1}
+@media(prefers-color-scheme:dark){.photo-meta .dot{color:#44403c}}
+
+/* Modal */
+.modal{display:none;position:fixed;inset:0;z-index:100;background:#000;flex-direction:column;overflow:hidden}
+.modal.active{display:flex}
+.modal-top{display:flex;align-items:center;padding:8px 16px;color:#fff;z-index:2;min-height:48px}
+.modal-back{background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;padding:4px 8px 4px 0;line-height:1;display:flex;align-items:center}
+.modal-back svg{width:24px;height:24px}
+.modal-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-img-wrap{background:#000;display:flex;align-items:center;justify-content:center}
+.modal-img-wrap img{width:100%;max-height:55vh;object-fit:contain;display:block}
+.modal-body{padding:20px 16px 32px;color:#fff}
+.modal-meta{display:flex;justify-content:space-between;align-items:center;font-size:.8125rem;color:#a8a29e;margin-bottom:12px}
+.modal-desc{font-size:.9375rem;line-height:1.6;color:#e7e5e4;margin-bottom:20px}
+.modal-divider{height:1px;background:#292524;margin-bottom:20px}
+
+/* Comments */
+.comments-header{font-size:.8125rem;font-weight:600;color:#a8a29e;margin-bottom:16px;letter-spacing:.02em}
+.comment{padding:12px 0;border-bottom:1px solid #1c1917}
+.comment:last-child{border-bottom:none}
+.comment-body{font-size:.875rem;line-height:1.5;color:#d6d3d1}
+.comment-body.deleted{color:#57534e;font-style:italic}
+.comment-expand{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:4px 0;background:none;border:none;color:#60a5fa;font-size:.8125rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.comment-expand:active{opacity:.7}
+.comment-expand svg{width:12px;height:12px;transition:transform .2s}
+.comment-expand.expanded svg{transform:rotate(90deg)}
+.comment-replies{margin-top:4px;border-left:2px solid #292524;padding-left:12px}
+</style>
+</head>
+<body>
+<header><h1>时光相册</h1><p>收藏历史，定格瞬间</p></header>
+<section class="section">
+  <div class="section-header"><h2>最新收录</h2><span id="count"></span></div>
+  <div class="photo-grid" id="grid"></div>
+</section>
+
+<div class="modal" id="modal">
+  <div class="modal-top">
+    <button class="modal-back" id="modalClose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+  </div>
+  <div class="modal-scroll" id="modalScroll">
+    <div class="modal-img-wrap" id="modalImgWrap"><img id="modalImg" src="" alt=""></div>
+    <div class="modal-body">
+      <div class="modal-meta">
+        <span id="modalYear"></span>
+        <span id="modalUpvotes"></span>
+      </div>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div class="modal-divider"></div>
+      <div class="comments-header" id="commentsHeader">评论</div>
+      <div id="modalComments"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const photos = [
+  {
+    "id": "1mucf8l",
+    "title": "左边是大卫·雷默，右边是布伦达·雷默",
+    "description": "他们是同一个人。童年时他遭遇了一场失败的包皮手术，因此在一名医生的建议下，家人决定对他进行阉割并将他当作女孩抚养。他在15岁时（1980年）开始重新以男孩身份生活。",
+    "imageUrl": "/photos/1mucf8l.jpeg",
+    "postedAt": "2024-08-31",
+    "upvotes": 44022,
+    "year": "1965-1980",
+    "location": "加拿大",
+    "comments": [
+      {
+        "id": "n9hzzz3",
+        "author": "",
+        "score": 2579,
+        "body": "我真的满脑子问号。怎么从\"来，咱们做个小手术\"变成\"那干脆把他变成女孩养吧\"？就跟你理发时一边剪短了，另一边也得跟着修，结果越修越短，最后干脆剃光算了？",
+        "replies": [
+          {
+            "id": "n9imtc2",
+            "author": "",
+            "score": 1223,
+            "body": "因为他们是同卵双胞胎男孩，所以这被视为先天与后天辩论的完美案例研究。",
+            "replies": [
+              {
+                "id": "n9ju0pn",
+                "author": "",
+                "score": 419,
+                "body": "最糟糕的是，医生不断发表关于它有多有效的研究，尽管大卫很痛苦，并且由于被迫以错误的性别生活而出现行为问题。",
+                "replies": [
+                  {
+                    "id": "n9k1czr",
+                    "author": "",
+                    "score": 243,
+                    "body": "我记得在八十年代的大学心理学课上读到过这个案例。  ",
+                    "replies": [
+                      {
+                        "id": "n9mcrsq",
+                        "author": "",
+                        "score": 115,
+                        "body": "哦，哇，我在大学（2010 年代）读到过它，这是该领域的一个巨大失误。",
+                        "replies": [
+                          {
+                            "id": "n9mkte8",
+                            "author": "",
+                            "score": 79,
+                            "body": "显然，即使在医学领域，也有很多老教授教授过时的信息。 ",
+                            "replies": [
+                              {
+                                "id": "n9n5ml1",
+                                "author": "",
+                                "score": 62,
+                                "body": "是的，他们仍然教导子宫颈不会感到疼痛，尽管事实并非如此。",
+                                "replies": [
+                                  {
+                                    "id": "n9niynd",
+                                    "author": "",
+                                    "score": 67,
+                                    "body": "是的，我当时在医学院，“呃……我不知道”，我60多岁的导师说，当她在医学院时，他们教给医学院的学生，整个阴道没有神经末梢，所以在子宫颈抹片检查时你可以随心所欲地粗暴。",
+                                    "replies": [
+                                      {
+                                        "id": "n9nn6w6",
+                                        "author": "",
+                                        "score": 51,
+                                        "body": "更不用说在大多数州，他们接受过培训，可以对在那里接受手术的昏迷不醒的女性进行阴道检查。",
+                                        "replies": [
+                                          {
+                                            "id": "n9nphfi",
+                                            "author": "",
+                                            "score": 41,
+                                            "body": "抱歉什么鬼？？？\n\n",
+                                            "replies": []
+                                          },
+                                          {
+                                            "id": "n9o6mk5",
+                                            "author": "",
+                                            "score": 35,
+                                            "body": "是的，借口是“他们还能如何学习？” \n",
+                                            "replies": []
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "n9nnhdh",
+                                "author": "",
+                                "score": 20,
+                                "body": "就在2014年，有一本护士学校教科书称黑人对疼痛的耐受性较高，因此需要较少的止痛药，还说黑人更喜欢精神影响的镇痛药。\n\n",
+                                "replies": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "n9mddyq",
+                        "author": "",
+                        "score": 36,
+                        "body": "是的，我在 1988 年的社会学课上读到过这件事。当时，他们说这孩子没事。  ",
+                        "replies": [
+                          {
+                            "id": "n9mh0nt",
+                            "author": "",
+                            "score": 24,
+                            "body": "是的。",
+                            "replies": [
+                              {
+                                "id": "n9n4yip",
+                                "author": "",
+                                "score": 18,
+                                "body": "这很讽刺，因为他的案例实际上是一个完美的案例研究，说明你不能强迫某人认同你想要的样子。",
+                                "replies": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9mae0w",
+                    "author": "",
+                    "score": 50,
+                    "body": "这不仅仅是因为他被迫以错误的性别生活，还因为*他的精神科医生对他进行性虐待*，以“更好地作为女性进行社交”或其他一些废话。",
+                    "replies": [
+                      {
+                        "id": "n9n2j96",
+                        "author": "",
+                        "score": 22,
+                        "body": "*精神科医生对这两个孩子进行性虐待。",
+                        "replies": []
+                      },
+                      {
+                        "id": "n9nhwnd",
+                        "author": "",
+                        "score": 17,
+                        "body": "只是需要澄清一点——他是被心理学家而不是精神科医生虐待的。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9k8gcz",
+                    "author": "",
+                    "score": 172,
+                    "body": "说他因创伤而自杀未免过于简单化。",
+                    "replies": [
+                      {
+                        "id": "n9kkikt",
+                        "author": "",
+                        "score": 32,
+                        "body": "哦，天哪，我刚刚评论完他可能受到性虐待的影响，但是该死的，他真的只是被无休止地操了:/",
+                        "replies": [
+                          {
+                            "id": "n9mjina",
+                            "author": "",
+                            "score": 28,
+                            "body": "他的兄弟也自杀了。",
+                            "replies": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "n9kg2by",
+                        "author": "",
+                        "score": 21,
+                        "body": "他妈的，这是一个“致命笑话”级别的可怕不幸序列，就像值得博德莱尔儿子天哪。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9jw9bc",
+                    "author": "",
+                    "score": 36,
+                    "body": "是的，我忘了补充一点，他将其描述为成功“为什么父母会相信那个庸医”，因为他从来没有被视为一个人🫠",
+                    "replies": [
+                      {
+                        "id": "n9l8m9m",
+                        "author": "",
+                        "score": 21,
+                        "body": "作为一个双性人，我希望有一个地狱，让约翰·莫尼在里面永远燃烧。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9m8nhf",
+                    "author": "",
+                    "score": 27,
+                    "body": "是的，人们用大卫身上的这个悲惨实验来为残害双性儿童（包括我自己）辩护。",
+                    "replies": []
+                  },
+                  {
+                    "id": "n9kk9b2",
+                    "author": "",
+                    "score": 18,
+                    "body": ">由于所有的创伤，他最终在成年后自杀了。\n\n",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "n9jkn42",
+                "author": "",
+                "score": 507,
+                "body": "《法律与秩序 svu》有一集是关于这个的（《身份》-第 6 集第 12 集） \n\n",
+                "replies": [
+                  {
+                    "id": "n9jtxp9",
+                    "author": "",
+                    "score": 176,
+                    "body": "这是他们隔着房间的镜子触摸双手的地方吗？",
+                    "replies": [
+                      {
+                        "id": "n9jtzdx",
+                        "author": "",
+                        "score": 136,
+                        "body": "是的！！！\n\n",
+                        "replies": [
+                          {
+                            "id": "n9ld9ga",
+                            "author": "",
+                            "score": 44,
+                            "body": "你刚刚为我的核心记忆提供了一些背景，这非常酷，谢谢！",
+                            "replies": []
+                          },
+                          {
+                            "id": "n9m63i4",
+                            "author": "",
+                            "score": 27,
+                            "body": "我可以订阅更多《法律与秩序：SUV》趣闻吗？",
+                            "replies": [
+                              {
+                                "id": "n9m9xe1",
+                                "author": "",
+                                "score": 18,
+                                "body": "我们在 r/svu 充满了他们！",
+                                "replies": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9jx8pz",
+                    "author": "",
+                    "score": 146,
+                    "body": "作为一个年轻的跨性别孩子，我不知道跨性别是什么，并且在我形成/保留记忆之前也被猥亵过，这一集困扰了我很长一段时间。",
+                    "replies": [
+                      {
+                        "id": "n9jxsqx",
+                        "author": "",
+                        "score": 45,
+                        "body": "你没有投射。",
+                        "replies": [
+                          {
+                            "id": "n9jyklr",
+                            "author": "",
+                            "score": 36,
+                            "body": "该死。",
+                            "replies": [
+                              {
+                                "id": "n9ml7iy",
+                                "author": "",
+                                "score": 18,
+                                "body": "如果有什么安慰的话，我认为你是对的，在他实现了自己的真理之后，他感到更加快乐。",
+                                "replies": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "n9jmqco",
+                "author": "",
+                "score": 66,
+                "body": "我明白为什么一个完全不道德的疯子医生会想做这个实验，但我他妈的不知道他是如何说服父母同意的。",
+                "replies": [
+                  {
+                    "id": "n9jp8ou",
+                    "author": "",
+                    "score": 59,
+                    "body": "他的阴茎严重受损，几乎完全被切除。",
+                    "replies": [
+                      {
+                        "id": "n9kkog2",
+                        "author": "",
+                        "score": 22,
+                        "body": "父母也（我保证这不是诽谤或阴影或其他任何东西，而是事实）在农村得到了相当的庇护和抚养。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9lq5pz",
+                    "author": "",
+                    "score": 20,
+                    "body": "这位妈妈绝对渴望一切都能为她的宝宝带来完美的结果。",
+                    "replies": [
+                      {
+                        "id": "n9maxoh",
+                        "author": "",
+                        "score": 16,
+                        "body": "如果整洁是女性化的话，我的两个女儿就错过了这份备忘录。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n9isi1m",
+            "author": "",
+            "score": 77,
+            "body": "所以我在大学时研究过这个孩子，因为他的医生对他的故事进行了很好的记录。 \n\n",
+            "replies": [
+              {
+                "id": "n9jn6nn",
+                "author": "",
+                "score": 52,
+                "body": "不要忘记，这次“实验”以大卫和他的兄弟最终结束了自己的生命而告终",
+                "replies": [
+                  {
+                    "id": "n9luoyz",
+                    "author": "",
+                    "score": 18,
+                    "body": "这个实验几乎肯定只是他为了金钱而对孩子们进行形象性虐待的借口，试图将他的理想主流化。",
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n9i2gg1",
+            "author": "",
+            "score": 538,
+            "body": "可能更像是，“这些双胞胎男孩出生了，我想对其中一个进行实验来比较他们的发育情况，但任何合理的道德委员会以及父母可能不会让我强迫一个健康的男婴女性化，所以我只能称其为拙劣的包皮环切术。”",
+            "replies": [
+              {
+                "id": "n9ijteo",
+                "author": "",
+                "score": 161,
+                "body": "进行实验的医生和进行包皮环切术的医生不是同一个人。",
+                "replies": [
+                  {
+                    "id": "n9imipq",
+                    "author": "",
+                    "score": 117,
+                    "body": "哦，呵呵，我已经错误地背诵了这个故事一段时间了，哈哈——拙劣的包皮环切术是真实的，但我觉得“我们绝对无能为力，只能把它变成阴道”部分仍然是废话。",
+                    "replies": [
+                      {
+                        "id": "n9j1qv4",
+                        "author": "",
+                        "score": 60,
+                        "body": "哦，我完全同意你的观点。",
+                        "replies": []
+                      },
+                      {
+                        "id": "n9iydcn",
+                        "author": "",
+                        "score": 29,
+                        "body": "我认为这种事情经常发生在双性人身上。",
+                        "replies": [
+                          {
+                            "id": "n9jddqc",
+                            "author": "",
+                            "score": 26,
+                            "body": "正是这种情况导致这种方法被采用为标准。  ",
+                            "replies": []
+                          },
+                          {
+                            "id": "n9k1k49",
+                            "author": "",
+                            "score": 27,
+                            "body": "确实如此。",
+                            "replies": []
+                          },
+                          {
+                            "id": "n9izvjn",
+                            "author": "",
+                            "score": 25,
+                            "body": "确实如此，他正在研究双性人，所以我认为他的目标是说，“看，我们可以将他们全部指定为女性，因为阴道比阴茎更容易复制！然后他们都会幸福！”\n\n",
+                            "replies": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "n9j9cew",
+                        "author": "",
+                        "score": 22,
+                        "body": "拙劣的包皮环切术也是实验性的，我认为医生正在尝试使用一种新方法，从字面上烧掉包皮？",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "n9i99mr",
+                "author": "",
+                "score": 156,
+                "body": "当人们说 LGBT 群体试图“让儿童变性”或者看到两个同性恋结婚会让孩子变成同性恋时，这个理论和这个可怕的实验就应该被提起。",
+                "replies": [
+                  {
+                    "id": "n9ivcsp",
+                    "author": "",
+                    "score": 56,
+                    "body": "这很奇怪，因为这只是证明你生来就有能力处理自己的性别，而在身体上成为错误的性别会导致巨大的身体不适，我们可以很容易地在跨性别者中推断出，这意味着他们可能只是拥有异性的大脑线路，而不是他们天生的性别。",
+                    "replies": [
+                      {
+                        "id": "n9izfqy",
+                        "author": "",
+                        "score": 25,
+                        "body": ">神经科学非常不确定，很难得出任何结论，但这是一个非常可靠的指标。\n\n",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9i9jqf",
+                    "author": "",
+                    "score": 84,
+                    "body": "我是跨性别者，有时我会提起这个故事！",
+                    "replies": [
+                      {
+                        "id": "n9jbn4i",
+                        "author": "",
+                        "score": 23,
+                        "body": "我实际上已经提出了这一点作为跨性别者真实存在的证据（这应该是显而易见的）。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n9i65x7",
+            "author": "",
+            "score": 24,
+            "body": "更像是你的头发剪得很糟糕，所以你决定自己剥头皮🫠",
+            "replies": [
+              {
+                "id": "n9iqmou",
+                "author": "",
+                "score": 25,
+                "body": "更像是你带着你的宝宝去理发店，他们把电池酸倒在你孩子的头皮上，让你可以选择给宝宝的臀部剥皮并制成新的头皮。 \n\n",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n9iwqaq",
+            "author": "",
+            "score": 21,
+            "body": "医生缺乏经验。",
+            "replies": []
+          },
+          {
+            "id": "n9i0a3a",
+            "author": "",
+            "score": 33,
+            "body": "取决于糟糕的意思 \n\n",
+            "replies": [
+              {
+                "id": "n9i0gv4",
+                "author": "",
+                "score": 115,
+                "body": "我真的满脑子问号。怎么从\"来，咱们做个小手术\"变成\"那干脆把他变成女孩养吧\"？就跟你理发时一边剪短了，另一边也得跟着修，结果越修越短，最后干脆剃光算了？",
+                "replies": [
+                  {
+                    "id": "n9i0npb",
+                    "author": "",
+                    "score": 41,
+                    "body": "他妈的，这更糟糕",
+                    "replies": []
+                  },
+                  {
+                    "id": "n9i1a9w",
+                    "author": "",
+                    "score": 50,
+                    "body": "哦他妈的我该怎么办？",
+                    "replies": [
+                      {
+                        "id": "n9ianyj",
+                        "author": "",
+                        "score": 37,
+                        "body": "我真的很想知道当他们开始将 7 个月大的男婴呈现为女孩时，他们在个人生活中告诉了人们什么。",
+                        "replies": [
+                          {
+                            "id": "n9iwz2s",
+                            "author": "",
+                            "score": 26,
+                            "body": "说实话，我希望他能够长大并享受生活，尽管有这些混蛋  \n",
+                            "replies": []
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9hsvlq",
+        "author": "",
+        "score": 1068,
+        "body": "大卫2004年自杀的。详情看维基百科。",
+        "replies": [
+          {
+            "id": "n9i2f15",
+            "author": "",
+            "score": 1079,
+            "body": "*根据 2001 年出版的雷默传记约翰·科拉平托 (John Colapinto) 的说法，与马尼的会谈包括马尼所说的“童年性排练”。",
+            "replies": [
+              {
+                "id": "n9ia8j1",
+                "author": "",
+                "score": 494,
+                "body": "他是个病态的混蛋。 ",
+                "replies": [
+                  {
+                    "id": "n9ityvw",
+                    "author": "",
+                    "score": 192,
+                    "body": "如果你单独查看关于金钱的维基文章，它指出他还为恋童癖创造了新术语，并认为它本质上是正常的。",
+                    "replies": [
+                      {
+                        "id": "n9kbbis",
+                        "author": "",
+                        "score": 69,
+                        "body": "作为社会学专业的学生研究了这个案例，但每隔几年仍然会陷入兔子洞",
+                        "replies": [
+                          {
+                            "id": "n9mv3o3",
+                            "author": "",
+                            "score": 17,
+                            "body": "我记得在一些大学课程中学过这个。",
+                            "replies": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "n9m79rp",
+                        "author": "",
+                        "score": 62,
+                        "body": "所以他是一个恋童癖者，他一生的工作就是为恋童癖辩护。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9iexga",
+                    "author": "",
+                    "score": 215,
+                    "body": "大卫于 2004 年结束了自己的生命，而不是 1996 年。 \n\n",
+                    "replies": [
+                      {
+                        "id": "n9j33m8",
+                        "author": "",
+                        "score": 96,
+                        "body": "Money 的 wiki 上说 Brian 服用了抗抑郁药。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9inlga",
+                    "author": "",
+                    "score": 89,
+                    "body": "我非常讨厌他们的父母！",
+                    "replies": [
+                      {
+                        "id": "n9j2456",
+                        "author": "",
+                        "score": 76,
+                        "body": "他们的父母只是按照医生的建议去做。 ",
+                        "replies": [
+                          {
+                            "id": "n9j3acp",
+                            "author": "",
+                            "score": 68,
+                            "body": "那是六十年代，他们可能不知道这种性表演和裸体检查正在发生。",
+                            "replies": []
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "n9i4000",
+                "author": "",
+                "score": 330,
+                "body": "POV：您是 John Money，2006 年 7 月 7 日：\n\n",
+                "replies": []
+              },
+              {
+                "id": "n9i4b9i",
+                "author": "",
+                "score": 104,
+                "body": "天哪，有人最终入狱了吗？  ",
+                "replies": [
+                  {
+                    "id": "n9igkez",
+                    "author": "",
+                    "score": 37,
+                    "body": "不是我读到的",
+                    "replies": []
+                  },
+                  {
+                    "id": "n9j28me",
+                    "author": "",
+                    "score": 35,
+                    "body": "性犯罪？",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "n9ii0b4",
+                "author": "",
+                "score": 45,
+                "body": "根据此案拍摄了《法律与秩序 SVU》一集。",
+                "replies": []
+              },
+              {
+                "id": "n9i8npe",
+                "author": "",
+                "score": 25,
+                "body": "卧槽🤢🤢🤢🤮",
+                "replies": []
+              },
+              {
+                "id": "n9i8hvi",
+                "author": "",
+                "score": 31,
+                "body": "他妈的",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n9i2q81",
+            "author": "",
+            "score": 194,
+            "body": "大卫和他的双胞胎兄弟布莱恩被一位名叫约翰·莫尼的“心理学家”要求参加“会议”，他利用这些男孩来证明他的性别是社会建构的理论。\n\n",
+            "replies": [
+              {
+                "id": "n9i54yb",
+                "author": "",
+                "score": 154,
+                "body": "而且他从来没有承认自己错了，也没有道歉。",
+                "replies": [
+                  {
+                    "id": "n9i5kk7",
+                    "author": "",
+                    "score": 103,
+                    "body": "性虐待儿童*然后责怪孩子*需要一种特殊的怪物。",
+                    "replies": [
+                      {
+                        "id": "n9i6zyk",
+                        "author": "",
+                        "score": 45,
+                        "body": "不幸的是，这种事一直在发生。",
+                        "replies": []
+                      },
+                      {
+                        "id": "n9i9zof",
+                        "author": "",
+                        "score": 37,
+                        "body": "这种情况发生的频率比你想象的要高。",
+                        "replies": [
+                          {
+                            "id": "n9iijwq",
+                            "author": "",
+                            "score": 51,
+                            "body": "我11岁时，我父亲开始强奸我，并责怪我。",
+                            "replies": [
+                              {
+                                "id": "n9inoig",
+                                "author": "",
+                                "score": 31,
+                                "body": "是的，我八岁的时候我哥哥强奸了我，他仍然责怪我对他心怀怨恨，“很难相处”",
+                                "replies": [
+                                  {
+                                    "id": "n9inv3i",
+                                    "author": "",
+                                    "score": 19,
+                                    "body": "那就乱了",
+                                    "replies": [
+                                      {
+                                        "id": "n9iocr3",
+                                        "author": "",
+                                        "score": 24,
+                                        "body": "我的意思是，只有自恋的恶心人才会像你父亲或我兄弟那样触摸孩子，他们仍然自我陶醉到孩子们可以同意/想要引诱他们，并真正认为他们是受害者，当这些孩子长大后受到创伤和怨恨时，这并不令人震惊。\n\n",
+                                        "replies": []
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "n9imj3k",
+                                "author": "",
+                                "score": 15,
+                                "body": "天哪，我很抱歉，对于发生在你身上的事情我无法说声抱歉。",
+                                "replies": [
+                                  {
+                                    "id": "n9imqdk",
+                                    "author": "",
+                                    "score": 15,
+                                    "body": "经过大量的治疗以及我丈夫和母亲的大力支持，我做得很好。",
+                                    "replies": []
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "n9i90hn",
+                    "author": "",
+                    "score": 22,
+                    "body": "你应该看看伊丽莎白·洛夫特斯。",
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n9ibzqq",
+            "author": "",
+            "score": 26,
+            "body": "他整个童年都受到性虐待，这一事实让我感到非常难过。",
+            "replies": []
+          },
+          {
+            "id": "n9ia7kb",
+            "author": "",
+            "score": 20,
+            "body": "对于整个家庭（大概是善意的）来说，这是多么可怕的经历。  ",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9i3gp5",
+        "author": "",
+        "score": 643,
+        "body": "这医生执照早该吊销了，告到他倾家荡产也不为过。谁他妈能给一个婴儿做这种建议？",
+        "replies": [
+          {
+            "id": "n9idem2",
+            "author": "",
+            "score": 389,
+            "body": "如果没有医疗需要，他们甚至不应该建议进行包皮环切术。",
+            "replies": [
+              {
+                "id": "n9ifwg0",
+                "author": "",
+                "score": 146,
+                "body": "宗教已经进入讨论范围。",
+                "replies": [
+                  {
+                    "id": "n9iu5xz",
+                    "author": "",
+                    "score": 91,
+                    "body": "没关系，国家必须独立于宗教机构。",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "n9ip1i5",
+                "author": "",
+                "score": 30,
+                "body": "“嗯，老实说，它在撒哈拉以南非洲地区减少了 0.7% 的艾滋病毒传播，因此迫切需要在全球范围内提供公共卫生和服务”——美国医生在国际医学会议上受到了其他所有人的白眼。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9hur91",
+        "author": "",
+        "score": 202,
+        "body": "这俩人八成是全球最差父母的候选人。",
+        "replies": [
+          {
+            "id": "n9itpp9",
+            "author": "",
+            "score": 23,
+            "body": "一位非常有说服力的医生说服了他们。",
+            "replies": []
+          },
+          {
+            "id": "n9i6pg4",
+            "author": "",
+            "score": 82,
+            "body": "阅读OP发布的维基百科文章，似乎每个阶段的父母都试图在每个阶段为孩子做到最好，但他们却被医疗“专业人士”可怕地失败了——首先是搞砸包皮环切术的医生，然后是庸医心理医生，他们自私和虐待的方法无疑造成了创伤，导致两兄弟最终死亡。",
+            "replies": []
+          },
+          {
+            "id": "n9i6dmj",
+            "author": "",
+            "score": 98,
+            "body": "不，他们是好父母，却听了一个坏人（我相信是心理学家）的意见，坏人告诉他们这对他更好。",
+            "replies": []
+          },
+          {
+            "id": "n9i9zru",
+            "author": "",
+            "score": 29,
+            "body": "父母也是受害者。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9i1egx",
+        "author": "",
+        "score": 196,
+        "body": "《法律与秩序：特殊受害者》有一集演过这个故事，拍得挺渗人的。",
+        "replies": [
+          {
+            "id": "n9ievqh",
+            "author": "",
+            "score": 107,
+            "body": "真的完蛋了。",
+            "replies": [
+              {
+                "id": "n9jm4dn",
+                "author": "",
+                "score": 40,
+                "body": "作为一名跨性别者，很高兴听到有人研究双性人和跨性别者。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9i7x6g",
+        "author": "",
+        "score": 188,
+        "body": null,
+        "replies": [
+          {
+            "id": "n9khtkv",
+            "author": "",
+            "score": 41,
+            "body": "他的兄弟两年前死于吸毒过量（如果是故意的，我不知道细节）。",
+            "replies": [
+              {
+                "id": "n9mmewn",
+                "author": "",
+                "score": 16,
+                "body": "布莱恩特别服用过量*处方药*，所以是的，自杀是一个准确的描述。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9ibea4",
+        "author": "",
+        "score": 156,
+        "body": "每次俩孩子不配合，那医生就发火。他们说曼尼在父母面前人模人样的，单独跟孩子在一起时就换了一副嘴脸。有一次让大卫脱衣服检查，大卫不肯，他就冲他吼：\"给我脱！\"那孩子吓得直哆嗦。",
+        "replies": [
+          {
+            "id": "n9jwfja",
+            "author": "",
+            "score": 39,
+            "body": "他的故事的一切都令人心碎。 \n\n",
+            "replies": [
+              {
+                "id": "n9jwnhx",
+                "author": "",
+                "score": 39,
+                "body": "每次俩孩子不配合，那医生就发火。他们说曼尼在父母面前人模人样的，单独跟孩子在一起时就换了一副嘴脸。有一次让大卫脱衣服检查，大卫不肯，他就冲他吼：\"给我脱！\"那孩子吓得直哆嗦。",
+                "replies": []
+              },
+              {
+                "id": "n9k2hoc",
+                "author": "",
+                "score": 17,
+                "body": "> 愚蠢且被误导的人\n\n",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9i8a2k",
+        "author": "",
+        "score": 108,
+        "body": "约翰·曼尼在霍普金斯大学到现在都还被当神一样供着，去世时退休宴会全场起立鼓掌……这人就是个变态，打着\"科研\"的幌子长期性侵那俩孩子，结果俩人都自杀了。",
+        "replies": []
+      },
+      {
+        "id": "n9i5100",
+        "author": "",
+        "score": 84,
+        "body": "让男人选择自己割礼的另一个原因。",
+        "replies": []
+      },
+      {
+        "id": "n9jh5bm",
+        "author": "",
+        "score": 50,
+        "body": "这种事情在双性人的孩子身上仍然时常发生，这绝对是可怕的 ",
+        "replies": [
+          {
+            "id": "n9k3nt0",
+            "author": "",
+            "score": 18,
+            "body": "似乎只有双性活动人士才会谈论这个问题。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9i5ebg",
+        "author": "",
+        "score": 47,
+        "body": "什么他妈的医生会推荐这个，Mengale 博士！",
+        "replies": [
+          {
+            "id": "n9ijdr6",
+            "author": "",
+            "score": 15,
+            "body": "我讨厌我被割礼了。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9iqfop",
+        "author": "",
+        "score": 46,
+        "body": "他哥哥两年前先没了，他还在悲痛中。他刚丢了工作，亏了65000美元，老婆也在他自杀前两天跑了。就算没有那段操蛋的童年，这人也是压力山大啊。可怜的人。:((",
+        "replies": []
+      },
+      {
+        "id": "n9i4kp9",
+        "author": "",
+        "score": 46,
+        "body": "禁止男性生殖器切割的另一个很好的论据",
+        "replies": []
+      },
+      {
+        "id": "n9j3esm",
+        "author": "",
+        "score": 45,
+        "body": "如果保守派被事实所左右，他们可能会因为我们知道你不能把一个人变成变性人而感到高兴。",
+        "replies": []
+      },
+      {
+        "id": "n9ijnv6",
+        "author": "",
+        "score": 28,
+        "body": "证明您不能将性别或性取向强加于某人。",
+        "replies": []
+      },
+      {
+        "id": "n9j416y",
+        "author": "",
+        "score": 18,
+        "body": "几乎就像性别认同是真实存在的一样，而不是基于身体属性。",
+        "replies": []
+      },
+      {
+        "id": "n9joota",
+        "author": "",
+        "score": 17,
+        "body": "你忘了说他自杀了",
+        "replies": []
+      },
+      {
+        "id": "n9ig5sv",
+        "author": "",
+        "score": 14,
+        "body": "这本不应该通过约翰霍普金斯大学的 IRB 或伦理委员会，尽管自 20 世纪 60 年代/1970 年代对于伦理心理学研究来说总体来说是一个糟糕的时期（津巴多在 1971 年做了他的斯坦福监狱实验），它可能没有经过任何人的审查。 \n\n",
+        "replies": []
+      },
+      {
+        "id": "n9isa1o",
+        "author": "",
+        "score": 10,
+        "body": "让我想起了电影《睡营》",
+        "replies": []
+      },
+      {
+        "id": "n9jfvgb",
+        "author": "",
+        "score": 10,
+        "body": "这位“医生”的名字是约翰·莫尼。",
+        "replies": []
+      },
+      {
+        "id": "n9ixjkl",
+        "author": "",
+        "score": 9,
+        "body": "想象一下他（当时的她）与父母的对话：\n\n",
+        "replies": []
+      },
+      {
+        "id": "n9iqnt5",
+        "author": "",
+        "score": 7,
+        "body": "这个案例众所周知，并且强烈影响了对性别认同的理解。 ",
+        "replies": []
+      },
+      {
+        "id": "n9iihub",
+        "author": "",
+        "score": 7,
+        "body": "啊加拿大！！！！！！",
+        "replies": []
+      },
+      {
+        "id": "n9j5fm5",
+        "author": "",
+        "score": 6,
+        "body": "尊敬的你和重新开始这个疯狂的搞砸“修复”的医生都应该进监狱",
+        "replies": []
+      },
+      {
+        "id": "n9jono1",
+        "author": "",
+        "score": 6,
+        "body": "你忘了说他自杀了",
+        "replies": []
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "玛丽莲·梦露为电影《热辣辣》试穿服装",
+    "description": "1958年，玛丽莲·梦露为电影《热辣辣》试穿服装的珍贵幕后照片。",
+    "imageUrl": "/photos/peOeNd0.jpg",
+    "postedAt": "2026-05-11",
+    "upvotes": 2482,
+    "year": "1958",
+    "location": "美国",
+    "comments": [
+      {
+        "id": "okidgkk",
+        "author": "",
+        "score": 127,
+        "body": "当镜头出现或被拍照时，她从来都不是“玛丽莲”。",
+        "replies": [
+          {
+            "id": "okihitk",
+            "author": "",
+            "score": 103,
+            "body": "这太疯狂了，因为她最重时只有 140 磅左右。",
+            "replies": []
+          },
+          {
+            "id": "okizt9h",
+            "author": "",
+            "score": 64,
+            "body": "如果我没记错的话，拍摄这部电影时她已经怀孕了，所以重量增加了一些。",
+            "replies": [
+              {
+                "id": "okjlkhd",
+                "author": "",
+                "score": 36,
+                "body": "是的，她是。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "okix7f5",
+        "author": "",
+        "score": 103,
+        "body": "那件衣服太疯狂了。",
+        "replies": [
+          {
+            "id": "okj1e39",
+            "author": "",
+            "score": 54,
+            "body": "而且都是在怀孕期间！",
+            "replies": [
+              {
+                "id": "okknbgy",
+                "author": "",
+                "score": 28,
+                "body": "啊，好吧。",
+                "replies": [
+                  {
+                    "id": "okl4c8b",
+                    "author": "",
+                    "score": 25,
+                    "body": null,
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "okj98lw",
+            "author": "",
+            "score": 24,
+            "body": "这个时代的女性都是束腰带的，廓形绝对是通过内衣来实现的。",
+            "replies": [
+              {
+                "id": "okjizso",
+                "author": "",
+                "score": 64,
+                "body": "u/hellokiri 指的是《热情似火》中的那件特殊连衣裙。  ",
+                "replies": [
+                  {
+                    "id": "okm0wjk",
+                    "author": "",
+                    "score": 17,
+                    "body": "我注意到 50 年代至 60 年代的比基尼照片中的躯干形状与今天有所不同。",
+                    "replies": [
+                      {
+                        "id": "okmvz9e",
+                        "author": "",
+                        "score": 27,
+                        "body": "我觉得很大一部分是人们以一种非常夸张的方式“吸肚子”。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "okhya5g",
+        "author": "",
+        "score": 86,
+        "body": "哇，这张照片是我见过的最清晰的她受损头发的照片之一！",
+        "replies": []
+      },
+      {
+        "id": "okhgxty",
+        "author": "",
+        "score": 80,
+        "body": "兄弟看起来就像B99中的老年银行劫匪。",
+        "replies": [
+          {
+            "id": "oki8x3c",
+            "author": "",
+            "score": 26,
+            "body": "他看起来像漫画",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "okhbera",
+        "author": "",
+        "score": 37,
+        "body": "她是如此可笑的标志性人物",
+        "replies": []
+      },
+      {
+        "id": "okihcxk",
+        "author": "",
+        "score": 27,
+        "body": "如何正确测量？",
+        "replies": []
+      },
+      {
+        "id": "okiqy9t",
+        "author": "",
+        "score": 8,
+        "body": "她很小！",
+        "replies": []
+      },
+      {
+        "id": "okowz3l",
+        "author": "",
+        "score": 7,
+        "body": "当我看到玛丽莲的电影和照片时，我无法不意识到她不得不忍受无休止的虐待。",
+        "replies": []
+      },
+      {
+        "id": "okkbhlq",
+        "author": "",
+        "score": 5,
+        "body": "她的一生如此悲惨",
+        "replies": []
+      },
+      {
+        "id": "okm0ind",
+        "author": "",
+        "score": 4,
+        "body": "她的胸部很高，没有内衣真是太疯狂了。",
+        "replies": []
+      },
+      {
+        "id": "okil07t",
+        "author": "",
+        "score": 3,
+        "body": "老哥的耳垂最长",
+        "replies": []
+      },
+      {
+        "id": "okr6n3w",
+        "author": "",
+        "score": 3,
+        "body": "https://preview.redd.it/1b75017rv00h1.jpeg?width=1242&format=pjpg&auto=webp&s=77b9684c4dc2fde4fabd0b37c94c3cb5f8097f94",
+        "replies": []
+      },
+      {
+        "id": "oks34e4",
+        "author": "",
+        "score": 3,
+        "body": "我把这件衣服和七年之痒衣服称为电影史上最具标志性的两件衣服是不是错了？ ",
+        "replies": []
+      },
+      {
+        "id": "okwes38",
+        "author": "",
+        "score": 3,
+        "body": "为什么胸部这么尖？",
+        "replies": []
+      },
+      {
+        "id": "oki91r1",
+        "author": "",
+        "score": 2,
+        "body": "相机在哪里",
+        "replies": []
+      },
+      {
+        "id": "okiszbz",
+        "author": "",
+        "score": 2,
+        "body": "右边有大炮",
+        "replies": []
+      },
+      {
+        "id": "oku2ba4",
+        "author": "",
+        "score": 1,
+        "body": "肯定有比玛丽莲·梦露的服装师更糟糕的工作。",
+        "replies": []
+      },
+      {
+        "id": "okvg41x",
+        "author": "",
+        "score": 1,
+        "body": "这么大的胸",
+        "replies": []
+      },
+      {
+        "id": "oky0ozk",
+        "author": "",
+        "score": 1,
+        "body": "这不是她老公第一次把她打得这么惨吗？",
+        "replies": []
+      },
+      {
+        "id": "okyvah0",
+        "author": "",
+        "score": 1,
+        "body": "她正在和肯尼迪和他的兄弟做爱",
+        "replies": []
+      },
+      {
+        "id": "okz347y",
+        "author": "",
+        "score": 1,
+        "body": "她的身材是如此☕",
+        "replies": []
+      },
+      {
+        "id": "ol1kreq",
+        "author": "",
+        "score": 1,
+        "body": "这很了不起，但我也感受到了费城永远阳光明媚的感觉。",
+        "replies": []
+      },
+      {
+        "id": "ol2jprv",
+        "author": "",
+        "score": 1,
+        "body": "这是我从小以来最喜欢的电影。",
+        "replies": []
+      },
+      {
+        "id": "ol3tmwd",
+        "author": "",
+        "score": 1,
+        "body": "很棒的歌曲，直到罗伯特·帕尔默决定劫持整个声音并搞砸发电站。",
+        "replies": []
+      },
+      {
+        "id": "ol3xv62",
+        "author": "",
+        "score": 1,
+        "body": "玛丽莲有大炮。",
+        "replies": []
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "title": "美军士兵与苏联士兵在易北河握手",
+    "description": "美军士兵在易北河受损桥梁上与苏联士兵握手的照片，记录了快乐的欧洲胜利日历史性一刻。",
+    "imageUrl": "/photos/peOeUoV.jpg",
+    "postedAt": "2026-05-11",
+    "upvotes": 1231,
+    "year": "1945",
+    "location": "易北河",
+    "comments": [
+      {
+        "id": "okophgy",
+        "author": "",
+        "score": 20,
+        "body": "我看到只有人们试图到达桥的另一边",
+        "replies": []
+      },
+      {
+        "id": "okpmmxn",
+        "author": "",
+        "score": 18,
+        "body": "反法西斯同志",
+        "replies": [
+          {
+            "id": "okptzqc",
+            "author": "",
+            "score": 15,
+            "body": "那么我们会忘记从 1939 年起苏联是与哪一方作战的呢？",
+            "replies": [
+              {
+                "id": "okrx4vv",
+                "author": "",
+                "score": 19,
+                "body": "苏联在西班牙和哈尔金戈尔与谁作战？",
+                "replies": []
+              },
+              {
+                "id": "okrac0n",
+                "author": "",
+                "score": 17,
+                "body": "如果再往前看，可以看到，早在珍珠港事件之前，美国就以折扣价向法西斯日本出售石油，以协助日本军队对亚洲人民实施暴行。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "okpb9i6",
+        "author": "",
+        "score": 4,
+        "body": "年纪不大",
+        "replies": [
+          {
+            "id": "okpgosc",
+            "author": "",
+            "score": 22,
+            "body": "我的意思是，至少美国和苏联从未直接交战过。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "ol3uz8n",
+        "author": "",
+        "score": 1,
+        "body": "奇怪了，他们为什么不接吻呢？",
+        "replies": []
+      },
+      {
+        "id": "ol5xavw",
+        "author": "",
+        "score": 1,
+        "body": "您提出了很多没有证据支持的主张，例如",
+        "replies": []
+      },
+      {
+        "id": "okx4j62",
+        "author": "",
+        "score": 0,
+        "body": "这并不是一张真正罕见的照片，但还可以。",
+        "replies": []
+      },
+      {
+        "id": "oks1hvz",
+        "author": "",
+        "score": -2,
+        "body": "完全没有上演",
+        "replies": []
+      }
+    ]
+  },
+  {
+    "id": "1mws6gv",
+    "title": "普京向卡巴耶娃献花 (2001)",
+    "description": "2001年，俄罗斯总统弗拉基米尔·普京向阿丽娜·卡巴耶娃献花。她被传是其长期情妇及多个孩子的母亲。",
+    "imageUrl": "/photos/1mws6gv.jpeg",
+    "postedAt": "2025-08-22",
+    "upvotes": 32397,
+    "year": "2001",
+    "comments": [
+      {
+        "id": "n9zufhp",
+        "author": "",
+        "score": 2541,
+        "body": "看起来就像一个父亲在女儿高中毕业典礼上送花给她。",
+        "replies": [
+          {
+            "id": "n9zxav5",
+            "author": "",
+            "score": 846,
+            "body": "对寻找父亲太感兴趣了\n\n",
+            "replies": [
+              {
+                "id": "na00sfw",
+                "author": "",
+                "score": 939,
+                "body": "https://preview.redd.it/motjspzy6hkf1.jpeg?width=650&format=pjpg&auto=webp&s=80c4d8a90c8674f3a1fbcad11668fab4996ee6c2",
+                "replies": [
+                  {
+                    "id": "na016t1",
+                    "author": "",
+                    "score": 438,
+                    "body": "卡巴耶娃在右边，霍尔金娜在左边。",
+                    "replies": [
+                      {
+                        "id": "na04ab7",
+                        "author": "",
+                        "score": 323,
+                        "body": "这很有趣，因为即使在比赛中，霍尔金娜也几乎一直是一个刻板的俄罗斯恶棍。",
+                        "replies": [
+                          {
+                            "id": "na0irem",
+                            "author": "",
+                            "score": 325,
+                            "body": "如果你认为霍尔金娜是一个典型的恶棍，那么等到你了解维纳之后。  ",
+                            "replies": [
+                              {
+                                "id": "na0ll37",
+                                "author": "",
+                                "score": 90,
+                                "body": "天哪，我很高兴你链接了这个。",
+                                "replies": []
+                              },
+                              {
+                                "id": "na0s4k0",
+                                "author": "",
+                                "score": 76,
+                                "body": "这太搞笑了，让我想起了电视剧《杀死伊芙》中的俄罗斯角色。",
+                                "replies": [
+                                  {
+                                    "id": "na1ehmk",
+                                    "author": "",
+                                    "score": 38,
+                                    "body": "她也穿着运动服，还对着孩子们的体操镜大喊大叫。\n\n",
+                                    "replies": []
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "na1lthe",
+                                "author": "",
+                                "score": 35,
+                                "body": "哦，她是个皮条客。",
+                                "replies": [
+                                  {
+                                    "id": "na30tun",
+                                    "author": "",
+                                    "score": 18,
+                                    "body": "正是我的想法。",
+                                    "replies": []
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "na12gev",
+                                "author": "",
+                                "score": 23,
+                                "body": "她看起来有点像 80 年代的英国流行歌星 Boy George：https://share.google/images/YZNcVJgu2Wi37BIif",
+                                "replies": []
+                              },
+                              {
+                                "id": "na20yc1",
+                                "author": "",
+                                "score": 21,
+                                "body": "她是乌兹别克人。",
+                                "replies": []
+                              }
+                            ]
+                          },
+                          {
+                            "id": "na0ck4i",
+                            "author": "",
+                            "score": 142,
+                            "body": "https://i.redd.it/juw3qpdxjhkf1.gif",
+                            "replies": [
+                              {
+                                "id": "na1uwpo",
+                                "author": "",
+                                "score": 16,
+                                "body": "单臂敬礼是什么意思？",
+                                "replies": [
+                                  {
+                                    "id": "na34ovv",
+                                    "author": "",
+                                    "score": 17,
+                                    "body": "我对体操也几乎一无所知，但我相信他们需要举起双臂向评委致敬。",
+                                    "replies": []
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "na0ahld",
+                            "author": "",
+                            "score": 51,
+                            "body": "哈哈，我喜欢在潜水艇外遇到其他健身房的书呆子:)\n\n",
+                            "replies": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "na1cxn4",
+                        "author": "",
+                        "score": 17,
+                        "body": "为什么她看起来像《哥谭》系列中的角色。",
+                        "replies": [
+                          {
+                            "id": "na20ve8",
+                            "author": "",
+                            "score": 16,
+                            "body": "她是乌兹别克人。",
+                            "replies": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "na02x95",
+                    "author": "",
+                    "score": 49,
+                    "body": "是的，俄罗斯的体育项目似乎只是苏联项目的直接延续。",
+                    "replies": [
+                      {
+                        "id": "na258vs",
+                        "author": "",
+                        "score": 15,
+                        "body": "俄罗斯男人：如果某些东西对我们来说效果很好，为什么要修理它呢？",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "na1ljex",
+                    "author": "",
+                    "score": 19,
+                    "body": "维纳和她的寡头丈夫是利用体操运动员和其他人的人口贩子。",
+                    "replies": []
+                  },
+                  {
+                    "id": "na07koc",
+                    "author": "",
+                    "score": 15,
+                    "body": "令人失望的是，霍尔金娜是我最喜欢的 90 年代体操运动员之一。",
+                    "replies": [
+                      {
+                        "id": "na146mv",
+                        "author": "",
+                        "score": 26,
+                        "body": "霍尔金娜也一直公开憎恨西蒙·拜尔斯。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "na0bjht",
+                "author": "",
+                "score": 113,
+                "body": "*斯大林之死*氛围。\n\n",
+                "replies": [
+                  {
+                    "id": "na1n4o0",
+                    "author": "",
+                    "score": 21,
+                    "body": "我刚刚读到了关于贝利亚这个家伙的文章。",
+                    "replies": []
+                  },
+                  {
+                    "id": "na1kgov",
+                    "author": "",
+                    "score": 16,
+                    "body": "我怀疑人类和那个家伙躲过了一劫。",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "na0aboe",
+                "author": "",
+                "score": 147,
+                "body": "https://preview.redd.it/gueefq49hhkf1.jpeg?width=1200&format=pjpg&auto=webp&s=608f02766176c3e624ca4c89cd54bf165c599426",
+                "replies": [
+                  {
+                    "id": "na0b7w6",
+                    "author": "",
+                    "score": 149,
+                    "body": "![gif](giphy|p4yIX5BHZCkrC)",
+                    "replies": [
+                      {
+                        "id": "na0io0m",
+                        "author": "",
+                        "score": 49,
+                        "body": "![gif](giphy|qmvD9iCBJBcyc)",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "na01n0z",
+                "author": "",
+                "score": 71,
+                "body": "取决于父亲。",
+                "replies": []
+              },
+              {
+                "id": "na048k2",
+                "author": "",
+                "score": 18,
+                "body": "[我明白他为什么喜欢她了](https://share.google/images/1ivd7IuwLAMtJXqsc)",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9zx0e6",
+        "author": "",
+        "score": 641,
+        "body": "一位被克里姆林宫毒杀的欧洲间谍，临终前告诉全世界普京是个恋童癖。",
+        "replies": [
+          {
+            "id": "n9zy5z9",
+            "author": "",
+            "score": 262,
+            "body": "让我惊讶的颜色",
+            "replies": [
+              {
+                "id": "na073oa",
+                "author": "",
+                "score": 70,
+                "body": "这个女孩对他来说看起来太老了",
+                "replies": [
+                  {
+                    "id": "na07qc1",
+                    "author": "",
+                    "score": 114,
+                    "body": "大多数“恋童癖者”并不只对儿童感兴趣。 \n\n\n",
+                    "replies": []
+                  },
+                  {
+                    "id": "na13dam",
+                    "author": "",
+                    "score": 17,
+                    "body": "一个良好的想象力和一个像体操运动员一样矮小的女人就足够让他恶心了。",
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "na0aecl",
+            "author": "",
+            "score": 51,
+            "body": "![gif](giphy|xUPGcC0R9QjyxkPnS8)",
+            "replies": []
+          },
+          {
+            "id": "na07pi9",
+            "author": "",
+            "score": 30,
+            "body": "利特韦年科？",
+            "replies": [
+              {
+                "id": "na0dguk",
+                "author": "",
+                "score": 30,
+                "body": "是的。",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "na0nlla",
+            "author": "",
+            "score": 28,
+            "body": "毫不奇怪，因为我在某种游行中看到他和那个随机的孩子在一起 https://www.youtube.com/watch?v=5uWEaKLzwUg&pp=ygUQUHV0aW4ga2lzcyBiZWxseQ%3D%3D",
+            "replies": [
+              {
+                "id": "na0sobw",
+                "author": "",
+                "score": 27,
+                "body": "报道此事的记者中毒了",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "na035f5",
+            "author": "",
+            "score": 34,
+            "body": "![gif](giphy|28HpdUwQcjGp0YKIt6)",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9ztsft",
+        "author": "",
+        "score": 537,
+        "body": "她其实就是他的妻子，是两个儿子 Ivan 和 Vladimir 的母亲。这两个孩子非常娇生惯养，脱离现实世界。",
+        "replies": [
+          {
+            "id": "n9zxn5t",
+            "author": "",
+            "score": 476,
+            "body": "当他仍处于婚姻状态时，开始担任他的情妇。",
+            "replies": [
+              {
+                "id": "n9zy2ip",
+                "author": "",
+                "score": 405,
+                "body": "这混蛋也有亨利八世情结？",
+                "replies": [
+                  {
+                    "id": "n9zyd6v",
+                    "author": "",
+                    "score": 255,
+                    "body": "难道不是最有权势、以自我为中心的人吗？",
+                    "replies": [
+                      {
+                        "id": "na0arzl",
+                        "author": "",
+                        "score": 108,
+                        "body": "不是金正恩，考虑到朝鲜社会的父权制，这一点确实值得注意。",
+                        "replies": [
+                          {
+                            "id": "na0sfsx",
+                            "author": "",
+                            "score": 172,
+                            "body": "金正恩非常尊重他的妹妹，这在他愿意任命他的女儿为继任者方面发挥了作用。",
+                            "replies": [
+                              {
+                                "id": "na11cop",
+                                "author": "",
+                                "score": 44,
+                                "body": "她拥有计算机科学学位。",
+                                "replies": [
+                                  {
+                                    "id": "na1u24x",
+                                    "author": "",
+                                    "score": 72,
+                                    "body": "这是第一次将这两句话放在一起",
+                                    "replies": [
+                                      {
+                                        "id": "na2r5gm",
+                                        "author": "",
+                                        "score": 25,
+                                        "body": "哈哈，我丈夫有计算机科学学位，我笑得很厉害，谢谢",
+                                        "replies": []
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "id": "na2r6la",
+                                    "author": "",
+                                    "score": 15,
+                                    "body": "她要对我做什么？",
+                                    "replies": []
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "na1kd5q",
+                    "author": "",
+                    "score": 60,
+                    "body": "他拥有一切情结。",
+                    "replies": [
+                      {
+                        "id": "na2so15",
+                        "author": "",
+                        "score": 39,
+                        "body": "对黄金的俗气品味在独裁者中似乎相当普遍。",
+                        "replies": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "na2erja",
+                    "author": "",
+                    "score": 27,
+                    "body": "愚蠢到男人仍然因为 y 染色体没有被遗传而责怪女人。 ",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "na0cfqx",
+                "author": "",
+                "score": 91,
+                "body": "听说他和她的大儿子正在被培养来接替他。",
+                "replies": [
+                  {
+                    "id": "na10whh",
+                    "author": "",
+                    "score": 63,
+                    "body": "伙计，想想你的父亲是普京，他们合法地可能永远不会离开他们的住所，多么奇怪的生活，有没有他们的照片？",
+                    "replies": [
+                      {
+                        "id": "na118dd",
+                        "author": "",
+                        "score": 21,
+                        "body": "我认为电报上有一张据称是双胞胎之一的照片被泄露。",
+                        "replies": [
+                          {
+                            "id": "na1ddf7",
+                            "author": "",
+                            "score": 35,
+                            "body": "这两个男孩是双胞胎，还是他女儿中的双胞胎？",
+                            "replies": [
+                              {
+                                "id": "na21qlt",
+                                "author": "",
+                                "score": 28,
+                                "body": "他们的男孩是双胞胎，还有一个小女儿。",
+                                "replies": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "na1tuew",
+                    "author": "",
+                    "score": 18,
+                    "body": "特朗普受到俄罗斯的启发，普京受到朝鲜的启发 ",
+                    "replies": []
+                  },
+                  {
+                    "id": "na2bqwi",
+                    "author": "",
+                    "score": 15,
+                    "body": "那孩子出生于 2015 年，普京已经 72 岁了。他们的时间不多了。",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "na0udu2",
+                "author": "",
+                "score": 20,
+                "body": "我想他的孩子们和阿诺拉的寡头儿子一样都是混蛋。",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n9zw1ur",
+            "author": "",
+            "score": 99,
+            "body": "这就是他在乌克兰不能放弃的原因。  ",
+            "replies": [
+              {
+                "id": "n9zx07z",
+                "author": "",
+                "score": 83,
+                "body": "他不能放弃，甚至不能停止战斗，因为这很可能意味着权力的丧失和整个国家的崩溃。",
+                "replies": [
+                  {
+                    "id": "na00hdx",
+                    "author": "",
+                    "score": 20,
+                    "body": ">我们仍处于战斗多年。\n\n",
+                    "replies": [
+                      {
+                        "id": "na01ogi",
+                        "author": "",
+                        "score": 58,
+                        "body": "是的。",
+                        "replies": [
+                          {
+                            "id": "na049pp",
+                            "author": "",
+                            "score": 24,
+                            "body": ">乌克兰将通过经济而非战场击败俄罗斯。\n\n",
+                            "replies": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "na02qej",
+                        "author": "",
+                        "score": 18,
+                        "body": "如果他们不战斗就会死。",
+                        "replies": [
+                          {
+                            "id": "na04lqx",
+                            "author": "",
+                            "score": 26,
+                            "body": "这不太准确。",
+                            "replies": []
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9zzgj6",
+        "author": "",
+        "score": 492,
+        "body": "![gif](giphy|IwYkkg4L7tX1K)",
+        "replies": [
+          {
+            "id": "na32u9a",
+            "author": "",
+            "score": 31,
+            "body": "你已经说过几次暗示这个词了，什么暗示？",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9zyw25",
+        "author": "",
+        "score": 390,
+        "body": "49岁的普京被18岁的卡巴耶娃迷住了。恶心！",
+        "replies": [
+          {
+            "id": "na0d1zj",
+            "author": "",
+            "score": 119,
+            "body": "一个与时间一样古老的故事。",
+            "replies": [
+              {
+                "id": "na0robc",
+                "author": "",
+                "score": 35,
+                "body": "美女和野兽...",
+                "replies": []
+              },
+              {
+                "id": "na0vjvf",
+                "author": "",
+                "score": 53,
+                "body": "想象一下，她被约出去，知道如果她拒绝他，她可能会在第二天自杀。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9zznrh",
+        "author": "",
+        "score": 345,
+        "body": null,
+        "replies": [
+          {
+            "id": "na1073f",
+            "author": "",
+            "score": 61,
+            "body": "为什么你会提到它而不链接它？\n\n",
+            "replies": []
+          },
+          {
+            "id": "na0a9w5",
+            "author": "",
+            "score": 76,
+            "body": "为什么对《纽约时报》如此仇恨？",
+            "replies": [
+              {
+                "id": "na0c4x9",
+                "author": "",
+                "score": 327,
+                "body": "我可以告诉你我为什么讨厌他们。",
+                "replies": [
+                  {
+                    "id": "na0dryi",
+                    "author": "",
+                    "score": 84,
+                    "body": null,
+                    "replies": []
+                  },
+                  {
+                    "id": "na0pyx2",
+                    "author": "",
+                    "score": 63,
+                    "body": "谢谢你！",
+                    "replies": []
+                  },
+                  {
+                    "id": "na0zcjg",
+                    "author": "",
+                    "score": 21,
+                    "body": "在过去的十年里，主流媒体已经变成了公然的亿万富翁宣传。",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "na0evqc",
+                "author": "",
+                "score": 43,
+                "body": "他们忙着扮演假记者，同时理智地洗刷特朗普的第二次候选资格。 \n\n",
+                "replies": [
+                  {
+                    "id": "na0fnv7",
+                    "author": "",
+                    "score": 16,
+                    "body": null,
+                    "replies": [
+                      {
+                        "id": "na0lrmk",
+                        "author": "",
+                        "score": 23,
+                        "body": "这很讽刺。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "na0o1b8",
+                "author": "",
+                "score": 17,
+                "body": "他们为挫败佐兰·马姆达尼（Zohran Mamdani）的竞选活动所做的绝对可笑的努力怎么样？",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9zqnio",
+        "author": "",
+        "score": 299,
+        "body": "他看起来真他妈的 creepy。",
+        "replies": [
+          {
+            "id": "n9zs59r",
+            "author": "",
+            "score": 104,
+            "body": "他在这里看起来像斯蒂芬·米勒",
+            "replies": [
+              {
+                "id": "n9ztu7t",
+                "author": "",
+                "score": 22,
+                "body": null,
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n9zve6v",
+        "author": "",
+        "score": 269,
+        "body": "啊对，一个刚满18岁的女孩和一个49岁男人的健康关系。法西斯变态都是一个德行。",
+        "replies": [
+          {
+            "id": "na013iw",
+            "author": "",
+            "score": 42,
+            "body": "一切都与权力和控制有关",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9zy73p",
+        "author": "",
+        "score": 145,
+        "body": "这张图有一种特定的气质……\n\n",
+        "replies": [
+          {
+            "id": "n9zzqbn",
+            "author": "",
+            "score": 103,
+            "body": "这画面实在是太恐怖了",
+            "replies": [
+              {
+                "id": "na04gs6",
+                "author": "",
+                "score": 21,
+                "body": "每次看到都得红了我的眼珠子。",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "na07vaz",
+            "author": "",
+            "score": 26,
+            "body": "只是卡巴耶娃不是他的女儿，而且OP的照片中没有亲密的身体接触。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n9zvb0t",
+        "author": "",
+        "score": 116,
+        "body": "显然，她是一名体操运动员......\n\n",
+        "replies": [
+          {
+            "id": "n9zvyy3",
+            "author": "",
+            "score": 73,
+            "body": "奥运冠军 ",
+            "replies": []
+          },
+          {
+            "id": "na11oky",
+            "author": "",
+            "score": 43,
+            "body": "他不仅仅是“体操运动员”，还是最伟大、获得最多荣誉的艺术体操运动员之一、奥运会冠军和奖牌获得者、多次世界和欧洲冠军。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "na04n2s",
+        "author": "",
+        "score": 57,
+        "body": "我明白他和特朗普是怎么在对未成年女孩的性癖好上找到共鸣的了。",
+        "replies": []
+      },
+      {
+        "id": "n9zt9q6",
+        "author": "",
+        "score": 44,
+        "body": "他眼神里透着诡异和奇怪，但他就是个精神病患者。",
+        "replies": []
+      },
+      {
+        "id": "n9zuaxs",
+        "author": "",
+        "score": 41,
+        "body": "恶心。",
+        "replies": []
+      },
+      {
+        "id": "n9zudem",
+        "author": "",
+        "score": 35,
+        "body": "保证她系上一个并拍拍弗拉德的脸颊。",
+        "replies": []
+      },
+      {
+        "id": "n9zuaj1",
+        "author": "",
+        "score": 31,
+        "body": "古玛",
+        "replies": []
+      },
+      {
+        "id": "na06hy7",
+        "author": "",
+        "score": 31,
+        "body": "奇怪的。",
+        "replies": []
+      },
+      {
+        "id": "n9zyylp",
+        "author": "",
+        "score": 25,
+        "body": "# 制裁\n\n",
+        "replies": []
+      },
+      {
+        "id": "n9zyini",
+        "author": "",
+        "score": 20,
+        "body": "看到最糟糕的部分是虚伪",
+        "replies": []
+      },
+      {
+        "id": "n9zzlg0",
+        "author": "",
+        "score": 18,
+        "body": "她太年轻了。我打赌她更可能是囚犯而不是自愿的情妇。",
+        "replies": []
+      },
+      {
+        "id": "n9zz5bk",
+        "author": "",
+        "score": 18,
+        "body": "https://preview.redd.it/bucotgpu4hkf1.jpeg?width=1536&format=pjpg&auto=webp&s=ed86a98147af8cf8948f6f3e013f4901b7abf9b6",
+        "replies": []
+      },
+      {
+        "id": "na3h5qq",
+        "author": "",
+        "score": 14,
+        "body": "还记得普京第一个总统任期初期，他在游行中停下来，令人毛骨悚然地拉起一个小男孩的衬衫并亲吻他的腹部，让周围的人都对他奇怪的行为感到震惊？\n\n",
+        "replies": []
+      },
+      {
+        "id": "na061no",
+        "author": "",
+        "score": 13,
+        "body": "普京总是散发着纳粹气息。",
+        "replies": []
+      },
+      {
+        "id": "na0gu1x",
+        "author": "",
+        "score": 12,
+        "body": "野二看到两块狗屎握手",
+        "replies": []
+      },
+      {
+        "id": "na0m4dw",
+        "author": "",
+        "score": 11,
+        "body": "这是一个由强奸犯和性骚扰者组成的庞大俱乐部。",
+        "replies": []
+      },
+      {
+        "id": "na188sk",
+        "author": "",
+        "score": 11,
+        "body": "这里的肢体语言严重不对劲，而且很难忽视多年来流传的其他谣言。",
+        "replies": []
+      }
+    ]
+  },
+  {
+    "id": "1t9eb21",
+    "title": "1943年4月，士兵路易斯·兹文在纽约宾夕法尼亚车站与家人告别",
+    "description": "第4步兵师的士兵路易斯·兹文（Louis Zwern）与妻子赛德（Syde）和女儿杰基（Jackie）在纽约宾夕法尼亚车站告别。这张照片由阿尔弗雷德·艾森斯塔特为《生活》杂志拍摄，是著名的系列告别照之一。",
+    "imageUrl": "/photos/1t9eb21.jpeg",
+    "postedAt": "2026-05-10",
+    "upvotes": 299,
+    "year": "1943",
+    "location": "纽约",
+    "comments": [
+      {
+        "id": "ol23enb",
+        "author": "",
+        "score": 23,
+        "body": "据谷歌称，他死于肺癌，享年 68 岁",
+        "replies": []
+      },
+      {
+        "id": "ol1eu14",
+        "author": "",
+        "score": 18,
+        "body": "我想知道他是否有幸回家？",
+        "replies": []
+      },
+      {
+        "id": "ol3oupq",
+        "author": "",
+        "score": 2,
+        "body": "他看起来很紧张😓",
+        "replies": []
+      }
+    ]
+  },
+  {
+    "id": "1m7sqx8",
+    "title": "奥斯维辛幸存者怀抱曾孙女",
+    "description": "一位奥斯维辛集中营幸存者怀抱她的曾孙女。历史与生命的传承，令人动容。",
+    "imageUrl": "/photos/1m7sqx8.jpeg",
+    "postedAt": "2025-07-24",
+    "upvotes": 30878,
+    "year": "现代",
+    "location": "波兰",
+    "comments": [
+      {
+        "id": "n4u0rq8",
+        "author": "",
+        "score": 680,
+        "body": "玛丽·索弗（Marie Soifer）如果我没看错的话。\n\n",
+        "replies": [
+          {
+            "id": "n4uedbl",
+            "author": "",
+            "score": 267,
+            "body": "她在那里待了两年。",
+            "replies": [
+              {
+                "id": "n4v1ehr",
+                "author": "",
+                "score": 134,
+                "body": "我敢打赌她的很大一部分从未离开过",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n4u4gkc",
+            "author": "",
+            "score": 328,
+            "body": "《车队目的地：奥斯威辛》，天啊……\n\n",
+            "replies": [
+              {
+                "id": "n4v6iji",
+                "author": "",
+                "score": 92,
+                "body": "特雷布林卡这个名字对我来说总是听起来很可怕……只是这个名字的一些特点。",
+                "replies": [
+                  {
+                    "id": "n4vhwzw",
+                    "author": "",
+                    "score": 41,
+                    "body": "我想这是因为“眨眼”至少对我来说听起来像“黯淡”",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "n4x385b",
+                "author": "",
+                "score": 16,
+                "body": "我在哪里可以阅读更多有关您提到的叛乱的信息？",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n4voad4",
+            "author": "",
+            "score": 36,
+            "body": "耶稣他妈的基督 \n\n",
+            "replies": [
+              {
+                "id": "n4w8vv0",
+                "author": "",
+                "score": 69,
+                "body": "是的，纳粹用当时最现代的技术记录了几乎所有的东西，并且由于盟友的快速进步，纳粹无法销毁所有这些文件。 \n\n\n",
+                "replies": [
+                  {
+                    "id": "n4wncmb",
+                    "author": "",
+                    "score": 32,
+                    "body": null,
+                    "replies": [
+                      {
+                        "id": "n4xc0nc",
+                        "author": "",
+                        "score": 17,
+                        "body": "是的——这不是一场独特的可怕的种族灭绝，因为所有的种族灭绝都是可怕的，但它是一场独特的工业、官僚种族灭绝。",
+                        "replies": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n4w1g8t",
+            "author": "",
+            "score": 51,
+            "body": "我一直觉得令人心碎和沮丧的是，我们只需插入一个“号码”就可以识别集中营中的一个人。",
+            "replies": [
+              {
+                "id": "n4wtvgq",
+                "author": "",
+                "score": 23,
+                "body": "只要看看加沙人民或鳄鱼奥斯维辛集中营人民的照片，您就无需想象。  ",
+                "replies": [
+                  {
+                    "id": "n4xeb5k",
+                    "author": "",
+                    "score": 33,
+                    "body": "我认为幸存者的死亡是它再次发生的“原因”。  ",
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n4u2j7m",
+            "author": "",
+            "score": 44,
+            "body": "哇....这打击更大了🙏",
+            "replies": []
+          },
+          {
+            "id": "n4v3g5g",
+            "author": "",
+            "score": 17,
+            "body": "在灭绝营里如何生存两年",
+            "replies": [
+              {
+                "id": "n4vo40c",
+                "author": "",
+                "score": 35,
+                "body": "奥斯维辛既是一个工作营，又是一个灭绝营。   ",
+                "replies": []
+              },
+              {
+                "id": "n4v5ole",
+                "author": "",
+                "score": 36,
+                "body": "他们也是劳改营。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n4u20y1",
+        "author": "",
+        "score": 489,
+        "body": "对于那些试图抹去她的纳粹分子来说，他们之间的每一个可爱的时刻都是安静而美丽的“操你”。",
+        "replies": [
+          {
+            "id": "n4ua45f",
+            "author": "",
+            "score": 184,
+            "body": "不幸的是，我认识一个人，他的祖父母在大屠杀中幸存下来，他们的创伤是终生的，因此他们非常封闭。",
+            "replies": [
+              {
+                "id": "n4vld1a",
+                "author": "",
+                "score": 50,
+                "body": "Maus 专门谈到了这一点。",
+                "replies": []
+              },
+              {
+                "id": "n4w18mo",
+                "author": "",
+                "score": 26,
+                "body": "我和奶奶的相处就是这样",
+                "replies": [
+                  {
+                    "id": "n4x8lkw",
+                    "author": "",
+                    "score": 17,
+                    "body": "我很抱歉。",
+                    "replies": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "n4udz6d",
+            "author": "",
+            "score": 112,
+            "body": "是的。",
+            "replies": [
+              {
+                "id": "n4vu9m3",
+                "author": "",
+                "score": 21,
+                "body": "阿门✡️",
+                "replies": []
+              },
+              {
+                "id": "n4wc3s9",
+                "author": "",
+                "score": 28,
+                "body": ">我们的存在就是最好的报复\n\n",
+                "replies": []
+              }
+            ]
+          },
+          {
+            "id": "n4u3bz6",
+            "author": "",
+            "score": 17,
+            "body": "这",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4ucv9g",
+        "author": "",
+        "score": 300,
+        "body": "即使在如此美丽的图片中，纹身也是如此严峻。 ",
+        "replies": [
+          {
+            "id": "n4vpn1w",
+            "author": "",
+            "score": 151,
+            "body": "大约二十年前，当我还是一名医科学生时，我有一位集中营幸存者的病人，她也有类似的纹身。",
+            "replies": [
+              {
+                "id": "n4xdiol",
+                "author": "",
+                "score": 60,
+                "body": "亲眼所见一定是非常令人痛苦的。",
+                "replies": [
+                  {
+                    "id": "n4ymju6",
+                    "author": "",
+                    "score": 28,
+                    "body": "是的，我祖父有一个，每次看到它我都会从骨子里感到恐惧。",
+                    "replies": []
+                  },
+                  {
+                    "id": "n4zbfgj",
+                    "author": "",
+                    "score": 19,
+                    "body": "在布鲁克林长大的时候经常看到他们。",
+                    "replies": []
+                  }
+                ]
+              },
+              {
+                "id": "n4xpdn4",
+                "author": "",
+                "score": 37,
+                "body": "我成长过程中有一位老师，他还是个小孩子。",
+                "replies": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n4uqavs",
+        "author": "",
+        "score": 217,
+        "body": "嘿，reddit，这里有一个方便的指南，可以帮助您了解您是否反犹太主义。\n\n",
+        "replies": [
+          {
+            "id": "n4wb7f5",
+            "author": "",
+            "score": 43,
+            "body": "公平地说，他们很难记住其中的区别，因为在他们的头脑中没有区别。",
+            "replies": []
+          },
+          {
+            "id": "n4vlapa",
+            "author": "",
+            "score": 43,
+            "body": "“反犹太复国主义者”简直无法自拔。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4vtdp3",
+        "author": "",
+        "score": 90,
+        "body": "永远不要忘记！",
+        "replies": [
+          {
+            "id": "n4xdta6",
+            "author": "",
+            "score": 30,
+            "body": "对于任何人来说，任何地方都不再应该成为全人类的集结点。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4tywko",
+        "author": "",
+        "score": 71,
+        "body": "我知道这只是我自己的投射，但看起来那个婴儿看到了奶奶的那么多痛苦并对此表示同情。",
+        "replies": [
+          {
+            "id": "n4u1xnz",
+            "author": "",
+            "score": 94,
+            "body": "看起来宝宝在对我说“咕咕嘎嘎”，但这也可能是我自己的投射。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4vs383",
+        "author": "",
+        "score": 45,
+        "body": "*叹息*\n\n",
+        "replies": [
+          {
+            "id": "n4vzygv",
+            "author": "",
+            "score": 25,
+            "body": "令人惊讶的是，真正卑鄙的评论很少\n\n",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4uutbu",
+        "author": "",
+        "score": 41,
+        "body": "这张照片展现了纯粹的韧性，几代人的爱和生活反抗着历史上最黑暗的摧毁它们的企图。",
+        "replies": []
+      },
+      {
+        "id": "n4uwlaf",
+        "author": "",
+        "score": 35,
+        "body": "她手臂上的数字是她的标记吗？",
+        "replies": [
+          {
+            "id": "n4v098t",
+            "author": "",
+            "score": 37,
+            "body": "是的。",
+            "replies": []
+          }
+        ]
+      },
+      {
+        "id": "n4uurtk",
+        "author": "",
+        "score": 31,
+        "body": "我和曾祖父有类似的照片。",
+        "replies": []
+      },
+      {
+        "id": "n4y62kr",
+        "author": "",
+        "score": 14,
+        "body": "想象一下，你对自己的种族灭绝观点如此自信，以至于你对每个受害者进行了编号和记录",
+        "replies": []
+      },
+      {
+        "id": "n4vqr85",
+        "author": "",
+        "score": 13,
+        "body": "太棒了！ ",
+        "replies": []
+      },
+      {
+        "id": "n4u66gs",
+        "author": "",
+        "score": 12,
+        "body": "我不知道一张照片可以既温暖又令人心碎。",
+        "replies": []
+      },
+      {
+        "id": "n4ycmw8",
+        "author": "",
+        "score": 10,
+        "body": "我记得一位大屠杀幸存者（在一部纪录片中）说，生孙子是对纳粹最大的报复。",
+        "replies": []
+      },
+      {
+        "id": "n50pw65",
+        "author": "",
+        "score": 9,
+        "body": "我祈祷上帝原谅我们对彼此所做的一切",
+        "replies": []
+      },
+      {
+        "id": "n4u745k",
+        "author": "",
+        "score": 9,
+        "body": "我奶奶也有类似的照片（七次......）。",
+        "replies": []
+      },
+      {
+        "id": "n4ye9a9",
+        "author": "",
+        "score": 8,
+        "body": "对数字下方的倒三角形感到好奇。",
+        "replies": []
+      },
+      {
+        "id": "n4vfk1w",
+        "author": "",
+        "score": 6,
+        "body": "我认为她很高兴看到她的家庭成长，看到她的孙子在和平的环境中长大，并且（希望）永远不会经历像她那样的事情。",
+        "replies": []
+      },
+      {
+        "id": "n4xdzp4",
+        "author": "",
+        "score": 6,
+        "body": "太棒了，愿上帝保佑她和她的家人！ ",
+        "replies": []
+      },
+      {
+        "id": "n4x1zvz",
+        "author": "",
+        "score": 5,
+        "body": "我不知道为什么，但这张照片让我心碎，同时也让我很高兴。",
+        "replies": []
+      },
+      {
+        "id": "n4uk61n",
+        "author": "",
+        "score": 5,
+        "body": "狗屎药",
+        "replies": []
+      },
+      {
+        "id": "n4zvpw2",
+        "author": "",
+        "score": 4,
+        "body": "我不认识她，但我很高兴她认识。",
+        "replies": []
+      },
+      {
+        "id": "n50a60z",
+        "author": "",
+        "score": 4,
+        "body": "愿上帝保佑她，愿她余生平安",
+        "replies": []
+      },
+      {
+        "id": "n4xkw77",
+        "author": "",
+        "score": 4,
+        "body": null,
+        "replies": []
+      },
+      {
+        "id": "n4vfpe0",
+        "author": "",
+        "score": 4,
+        "body": "爱它。",
+        "replies": []
+      }
+    ]
+  }
+];
+
+document.getElementById('count').textContent = photos.length + ' 张照片';
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function renderMeta(photo) {
+  const parts = [];
+  if (photo.upvotes > 0) parts.push(photo.upvotes.toLocaleString() + ' 赞');
+  if (photo.location) parts.push(esc(photo.location));
+  return parts.join('<span class="dot"> · </span>');
+}
+
+const grid = document.getElementById('grid');
+const modal = document.getElementById('modal');
+const modalImg = document.getElementById('modalImg');
+const modalYear = document.getElementById('modalYear');
+const modalUpvotes = document.getElementById('modalUpvotes');
+const modalDesc = document.getElementById('modalDesc');
+const modalComments = document.getElementById('modalComments');
+const commentsHeader = document.getElementById('commentsHeader');
+const modalScroll = document.getElementById('modalScroll');
+
+let currentPhoto = null;
+
+function countAllComments(comments) {
+  let n = comments.length;
+  for (const c of comments) {
+    if (c.replies) n += countAllComments(c.replies);
+  }
+  return n;
+}
+
+function renderComment(comment, depth) {
+  const el = document.createElement('div');
+  el.className = 'comment';
+
+  const body = comment.body ? esc(comment.body) : null;
+  const score = comment.score || 0;
+
+  el.innerHTML = `<div class="comment-body${body ? '' : ' deleted'}">${body || '[内容已删除]'}</div>`;
+
+  if (comment.replies && comment.replies.length > 0) {
+    const btn = document.createElement('button');
+    btn.className = 'comment-expand';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> ${comment.replies.length} 条回复`;
+
+    const container = document.createElement('div');
+    container.className = 'comment-replies';
+    container.style.display = 'none';
+
+    btn.addEventListener('click', () => {
+      if (btn.dataset.expanded === 'true') {
+        container.style.display = 'none';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> ${comment.replies.length} 条回复`;
+        btn.classList.remove('expanded');
+        btn.dataset.expanded = 'false';
+      } else {
+        if (!container.children.length) {
+          comment.replies.forEach(r => {
+            const re = renderComment(r, (depth || 0) + 1);
+            if (re) container.appendChild(re);
+          });
+        }
+        container.style.display = 'block';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg> 收起';
+        btn.classList.add('expanded');
+        btn.dataset.expanded = 'true';
+      }
+    });
+
+    el.appendChild(btn);
+    el.appendChild(container);
+  }
+
+  return el;
+}
+
+function renderCards() {
+  photos.forEach((photo, idx) => {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    const totalComments = countAllComments(photo.comments || []);
+    const meta = renderMeta(photo);
+    card.innerHTML = `
+      <div class="photo-img">
+        <img src="${esc(photo.imageUrl)}" alt="${esc(photo.title)}" loading="lazy">
+        ${photo.year ? '<span class="badge badge-year">' + esc(photo.year) + '</span>' : ''}
+        ${totalComments > 0 ? '<span class="badge badge-comments"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>' + totalComments + '</span>' : ''}
+      </div>
+      <div class="photo-info">
+        <h3>${esc(photo.title)}</h3>
+        <p>${esc(photo.description)}</p>
+        ${meta ? '<div class="photo-meta">' + meta + '</div>' : ''}
+      </div>
+    `;
+    card.addEventListener('click', () => openModal(idx));
+    grid.appendChild(card);
+  });
+}
+
+function openModal(idx) {
+  currentPhoto = photos[idx];
+  modalImg.src = currentPhoto.imageUrl;
+  modalImg.alt = currentPhoto.title;
+
+  modalYear.textContent = currentPhoto.year || '';
+  modalUpvotes.textContent = (currentPhoto.upvotes > 0 ? currentPhoto.upvotes.toLocaleString() + ' 赞' : '');
+
+  modalDesc.textContent = currentPhoto.description;
+
+  const total = countAllComments(currentPhoto.comments || []);
+  commentsHeader.textContent = '评论' + (total > 0 ? ' (' + total + ')' : '');
+
+  modalComments.innerHTML = '';
+  if (currentPhoto.comments && currentPhoto.comments.length > 0) {
+    currentPhoto.comments.forEach(c => {
+      const el = renderComment(c, 0);
+      if (el) modalComments.appendChild(el);
+    });
+  } else {
+    modalComments.innerHTML = '<div style="color:#57534e;font-size:.875rem;padding:8px 0">暂无评论</div>';
+  }
+
+  modalScroll.scrollTop = 0;
+  modal.classList.add('active');
+}
+
+function closeModal() {
+  modal.classList.remove('active');
+  modalImg.src = '';
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+renderCards();
+</script>
+</body>
+</html>
