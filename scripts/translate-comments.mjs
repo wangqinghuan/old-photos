@@ -10,7 +10,7 @@ async function translate(text) {
       params: { client: "gtx", sl: "en", tl: "zh-CN", dt: "t", q: text },
       timeout: 10000,
     });
-    return data?.[0]?.[0]?.[0] || text;
+    return data?.[0]?.map(s => s[0]).filter(Boolean).join('') || text;
   } catch {
     return text;
   }
@@ -88,10 +88,10 @@ async function main() {
     }
     count(post.comments);
     console.log(`  Final: ${total} total, ${cn} Chinese`);
-  }
 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(photos, null, 2));
-  console.log(`\nSaved ${DATA_FILE}`);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(photos, null, 2));
+    console.log(`  Saved progress to ${DATA_FILE}`);
+  }
 }
 
 main().catch(console.error);

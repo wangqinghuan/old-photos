@@ -46,7 +46,7 @@ export async function fetchPost(url) {
   console.log(`Fetching r/${subreddit}/${postId}`);
 
   const { data } = await axios.get(
-    `https://old.reddit.com/r/${subreddit}/comments/${postId}/.json`,
+    `https://old.reddit.com/r/${subreddit}/comments/${postId}/.json?raw_json=1`,
     { headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0" } }
   );
 
