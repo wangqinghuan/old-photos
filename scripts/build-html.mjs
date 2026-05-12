@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
-const OUT_FILE = path.join(__dirname, "..", "public", "index.html");
+const OUT_FILE = path.join(__dirname, "..", "docs", "index.html");
 
 const photos = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
 
@@ -17,6 +17,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "1d4115fd2e0b4af683389875d643a0f9"}'></script>
 <title>时光相册 | 老照片收藏</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -79,7 +80,7 @@ header p{font-size:.75rem;color:#a8a29e;margin-top:2px}
 </style>
 </head>
 <body>
-<header><h1>时光相册</h1><p>收藏历史，定格瞬间</p></header>
+<header><h1>时光相册</h1><p>收藏历史，定格瞬间 <span id="visitorCount"></span></p></header>
 <section class="section">
   <div class="section-header"><h2>最新收录</h2><span id="count"></span></div>
   <div class="photo-grid" id="grid"></div>
@@ -110,6 +111,10 @@ header p{font-size:.75rem;color:#a8a29e;margin-top:2px}
 const photos = ${JSON.stringify(photos, null, 2)};
 
 document.getElementById('count').textContent = photos.length + ' 张照片';
+
+fetch('/api/count').then(r=>r.json()).then(d=>{
+  document.getElementById('visitorCount').textContent = '· 访客 ' + d.count;
+}).catch(()=>{});
 
 function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");

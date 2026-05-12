@@ -1,3 +1,7 @@
 name = "oldphotos"
 pages_build_output_dir = "docs"
 compatibility_date = "2026-05-11"
+
+[[kv_namespaces]]
+binding = "OLD_PHOTOS_COUNTER"
+id = "16f9d12548884be29092d7562e741b0e"

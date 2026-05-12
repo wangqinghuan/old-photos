@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PHOTOS_DIR = path.join(__dirname, "..", "public", "photos");
+const PHOTOS_DIR = path.join(__dirname, "..", "docs", "photos");
 const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
 
 function parseRedditUrl(url) {
