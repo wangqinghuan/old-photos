@@ -1,13 +1,5 @@
 export async function onRequest(context) {
   const { request, env } = context;
-
-  // Local dev: KV binding isn't real, return mock
-  if (typeof env.OLD_PHOTOS_COUNTER?.get !== "function") {
-    return new Response(JSON.stringify({ count: 1 }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   try {
     const count = await env.OLD_PHOTOS_COUNTER.get("visitors");
     const newCount = (parseInt(count) || 0) + 1;
@@ -34,7 +26,7 @@ export async function onRequest(context) {
       }
     });
   } catch (e) {
-    return new Response(JSON.stringify({ count: 0 }), {
+    return new Response(JSON.stringify({ count: 0, error: e.message }), {
       headers: { "Content-Type": "application/json" }
     });
   }
