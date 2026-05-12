@@ -2,6 +2,11 @@ const RECENT_KEY = "recent_visits";
 
 export async function onRequest(context) {
   const { request, env } = context;
+
+  if (typeof env.OLD_PHOTOS_COUNTER?.get !== "function") {
+    return new Response("本地开发模式下不可用", { status: 200 });
+  }
+
   try {
     const raw = await env.OLD_PHOTOS_COUNTER.get(RECENT_KEY);
     const visits = raw ? JSON.parse(raw) : [];

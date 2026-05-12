@@ -1,10 +1,33 @@
 import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 import axios from "axios";
 
-const DATA_FILE = "src/data/photos.json";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
+
+const geminiKey = process.env.GEMINI_API_KEY;
 
 async function translate(text) {
   if (!text || /[\u4e00-\u9fff]/.test(text)) return text;
+  if (geminiKey) {
+    try {
+      const { data } = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        { contents: [{ parts: [{ text: `翻译成地道中文（保持语气，只输出译文）：\n${text}` }] }] },
+        { timeout: 30000 }
+      );
+      const result = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (result) return result;
+    } catch (e) {
+      const msg = e.response?.data?.error?.message || e.message;
+      if (msg.includes("quota") || msg.includes("limit")) {
+        console.error("  Gemini额度用完，切换到Google");
+      } else {
+        console.error("  Gemini失败(" + msg + ")，切换到Google");
+      }
+    }
+  }
   try {
     const { data } = await axios.get("https://translate.googleapis.com/translate_a/single", {
       params: { client: "gtx", sl: "en", tl: "zh-CN", dt: "t", q: text },
