@@ -183,9 +183,10 @@ function esc(s) {
 
 function cleanReddit(s) {
   return String(s)
-    .replace(/[Rr]eddit/g, '')
-    .replace(/红迪/g, '')
-    .replace(/[\\[\\\\(]?已?被?[Rr]eddit删?除?[\\]\\\\)]?/g, '')
+    .replace(/\\[\\s*content\\s*已?\\s*被?\\s*[Rr]eddit\\s*移?\\s*除?\\s*\\]/gi, '')
+    .replace(/\\[\\s*已?\\s*被?\\s*[Rr]eddit\\s*删?\\s*除?\\s*\\]/g, '')
+    .replace(/\\(\\s*已?\\s*被?\\s*[Rr]eddit\\s*删?\\s*除?\\s*\\)/g, '')
+    .replace(/\\[deleted by [Rr]eddit\\]/gi, '')
     .replace(/\\/?r\\/\\S+/g, '')
     .replace(/\\/?u\\/\\S+/g, '')
     .replace(/\\s{2,}/g, ' ').trim();
@@ -501,9 +502,10 @@ console.log(`Built ${OUT_FILE}`);
 
 function cleanReddit(s) {
   return String(s)
-    .replace(/[Rr]eddit/g, '')
-    .replace(/红迪/g, '')
-    .replace(/[\[\(]?已?被?[Rr]eddit删?除?[\]\)]?/g, '')
+    .replace(/\[\s*内容?\s*已?\s*被?\s*[Rr]eddit\s*移?\s*除?\s*\]/gi, '')
+    .replace(/\[\s*已?\s*被?\s*[Rr]eddit\s*删?\s*除?\s*\]/g, '')
+    .replace(/\(\s*已?\s*被?\s*[Rr]eddit\s*删?\s*除?\s*\)/g, '')
+    .replace(/\[deleted by [Rr]eddit\]/gi, '')
     .replace(/\/?r\/\S+/g, '')
     .replace(/\/?u\/\S+/g, '')
     .replace(/\s{2,}/g, ' ').trim();

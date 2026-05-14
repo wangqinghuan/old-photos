@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
 
 const GEMINI_KEYS = [
+  "REVOKED_GEMINI_KEY_3",
   "REVOKED_GEMINI_KEY_1",
   "REVOKED_GEMINI_KEY_2",
 ];
@@ -25,6 +26,7 @@ const MODELS = [
 const BATCH_SIZE = 10;
 const TOP_LEVEL_LIMIT = 25;
 const REPLY_MIN_SCORE = 15;
+const MAX_OUTPUT_TOKENS = 16384;
 
 function filterTopLevel(comments) {
   const sorted = [...comments].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -49,11 +51,40 @@ function collectEnglish(comments) {
   return items;
 }
 
+function isTranslatable(text) {
+  if (!text) return false;
+  const t = text.trim();
+  if (/^https?:\/\/\S+$/i.test(t)) return false;
+  if (/^[\s\p{So}\p{Sk}\p{Emoji_Presentation}]+$/u.test(t)) return false;
+  if (/^[\s\-*_~`>#|]+$/.test(t)) return false;
+  if (/^!\[.*\]\(.*\)$/.test(t)) return false;
+  if (/^\[deleted\]\s*\S*$/i.test(t)) return false;
+  return true;
+}
+
+function isValidTranslation(original, translated) {
+  if (!translated || translated === original) return false;
+  const ratio = original.length / translated.length;
+  const origSentences = original.split(/[.!?]+/).filter(s => s.trim().length > 10).length;
+  const transSentences = translated.split(/[。！？.!?]+/).filter(s => s.trim().length > 5).length;
+  if (ratio > 8) return false;
+  if (origSentences >= 3 && transSentences <= 1 && ratio > 4) return false;
+  return true;
+}
+
 async function translateWithModels(texts, postId, batchNum, totalBatches) {
   if (texts.length === 0) return texts;
 
-  const batch = texts.map((t, i) => `[${i}] ${t}`).join("\n");
-  const prompt = `翻译以下英文评论为地道中文。保持原文语气，包括俚语、缩写、口语。每条前面有编号 [N]，只输出译文内容，格式为 [N] 后直接跟译文，不要加"译文："前缀。\n\n${batch}`;
+  const batch = texts.map((t, i) => `[${i}] ${t}`).join("\n\n");
+  const prompt = `翻译以下英文评论为地道中文。保持原文语气，包括俚语、缩写、口语。
+重要：必须逐句完整翻译，不得省略任何内容。如果原文有多个句子，译文必须包含全部句子。
+每条前面有编号 [N]，翻译内容从 [N] 后面开始，可以换行持续到下一个编号前。
+格式示例：
+[0] 这是第一句。
+这是第二句，接在上行后面。
+[1] 下一条评论的翻译。
+
+${batch}`;
 
   let lastError = null;
 
@@ -62,8 +93,8 @@ async function translateWithModels(texts, postId, batchNum, totalBatches) {
       try {
         const { data } = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          { contents: [{ parts: [{ text: prompt }] }] },
-          { timeout: 60000 }
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS } },
+          { timeout: 120000 }
         );
 
         const result = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
@@ -72,15 +103,38 @@ async function translateWithModels(texts, postId, batchNum, totalBatches) {
           continue;
         }
 
+        // Parse multi-line translations: [N] captures everything until next [N] or end
         const parsed = [];
-        for (const line of result.split("\n")) {
+        const lines = result.split("\n");
+        let currentIdx = -1;
+        for (const line of lines) {
           const m = line.match(/^\[(\d+)\]\s*(.*)/);
-          if (m) parsed[parseInt(m[1])] = m[2];
+          if (m) {
+            currentIdx = parseInt(m[1]);
+            parsed[currentIdx] = m[2];
+          } else if (currentIdx >= 0 && line.trim()) {
+            parsed[currentIdx] += "\n" + line;
+          }
         }
 
         const translated = texts.map((t, i) => parsed[i] || null);
-        const keyShort = key.slice(0, 38) + '...';
-        console.log(`  Batch ${batchNum}/${totalBatches}: [${model}] OK`);
+
+        // Validate translations: require 70%+ of translatable comments to pass
+        let validCount = 0;
+        let translatableCount = 0;
+        for (let i = 0; i < texts.length; i++) {
+          if (isTranslatable(texts[i])) {
+            translatableCount++;
+            if (isValidTranslation(texts[i], translated[i])) validCount++;
+          }
+        }
+        const threshold = translatableCount <= 2 ? translatableCount : Math.ceil(translatableCount * 0.5);
+        if (validCount < threshold) {
+          console.log(`  Batch ${batchNum}/${totalBatches}: ${model} returned ${validCount}/${translatableCount} valid (need ${threshold}), trying next`);
+          continue;
+        }
+
+        console.log(`  Batch ${batchNum}/${totalBatches}: [${model}] OK (${validCount}/${translatableCount} valid)`);
         return { model, translated };
       } catch (e) {
         const status = e.response?.status;
@@ -103,15 +157,15 @@ async function translateWithModels(texts, postId, batchNum, totalBatches) {
 async function translateField(text, label) {
   if (!text || /[\u4e00-\u9fff]/.test(text)) return text;
 
-  const prompt = `翻译以下英文为地道中文，只输出译文内容，不要加"译文："等前缀：\n\n${text}`;
+  const prompt = `翻译以下英文为地道中文，保留原文的所有信息，不要省略任何内容，只输出译文：\n\n${text}`;
 
   for (const key of GEMINI_KEYS) {
     for (const model of MODELS) {
       try {
         const { data } = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          { contents: [{ parts: [{ text: prompt }] }] },
-          { timeout: 30000 }
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS } },
+          { timeout: 60000 }
         );
 
         const result = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
