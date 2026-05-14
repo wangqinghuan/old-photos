@@ -22,6 +22,7 @@ export async function onRequest(context) {
           title: photo.title,
           description: photo.description,
           imageUrl: photo.imageUrl,
+          postedAt: photo.postedAt,
           year: photo.year,
           location: photo.location,
           upvotes: photo.upvotes,

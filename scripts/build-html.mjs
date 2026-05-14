@@ -105,6 +105,8 @@ a.photo-card{text-decoration:none;color:inherit;display:block}
 .comment-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px}
 .comment-author{font-size:.8125rem;font-weight:600;color:#fafaf9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .comment-score{font-size:.75rem;color:#78716c;flex-shrink:0}
+.comment-original{font-size:.75rem;color:#57534e;margin-bottom:2px;line-height:1.4}
+.comment-original{font-size:.75rem;color:#57534e;margin-bottom:2px;line-height:1.4}
 .comment-body{font-size:.875rem;line-height:1.5;color:#d6d3d1}
 .comment-body.deleted{color:#57534e;font-style:italic}
 .comment-body img{max-width:100%;border-radius:8px;margin-top:6px;display:block}
@@ -150,7 +152,7 @@ a.photo-card{text-decoration:none;color:inherit;display:block}
     <div class="carousel-dots" id="carouselDots"></div>
     <div class="modal-body">
       <div class="modal-meta">
-        <span id="modalYear"></span>
+        <span><span id="modalYear"></span><span id="modalPostedAt" style="margin-left:12px"></span></span>
         <span id="modalUpvotes"></span>
       </div>
       <h2 class="modal-title" id="modalTitle"></h2>
@@ -179,11 +181,22 @@ function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function cleanReddit(s) {
+  return String(s)
+    .replace(/[Rr]eddit/g, '')
+    .replace(/红迪/g, '')
+    .replace(/[\[\(]?已?被?[Rr]eddit删?除?[\]\)]?/g, '')
+    .replace(/\/?r\/\S+/g, '')
+    .replace(/\/?u\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ').trim();
+}
+
 function renderMeta(photo) {
   const parts = [];
-  if (photo.upvotes > 0) parts.push(photo.upvotes.toLocaleString() + ' \u8d5e');
+  if (photo.upvotes > 0) parts.push(photo.upvotes.toLocaleString() + ' 赞');
   if (photo.location) parts.push(esc(photo.location));
-  return parts.join('<span class="dot"> \u00b7 </span>');
+  if (photo.postedAt) parts.push(photo.postedAt);
+  return parts.join('<span class="dot"> · </span>');
 }
 
 function formatDate(iso) {
@@ -206,6 +219,8 @@ function renderBody(text) {
   var s2 = text.replace(imgRe2, function(m) { imgUrls2.push(m); return '%%IMG' + (imgUrls2.length-1) + '%%'; });
   var urlRe = /(https?:\\\/\\\/[^\\s<>]+)/gi;
   s2 = s2.replace(urlRe, function(m) { urlList.push(m); return '%%URL' + (urlList.length-1) + '%%'; });
+  s2 = cleanReddit(s2);
+  s2 = s2.replace(/^译文[：:]\s*/, '');
   s2 = esc(s2);
   s2 = s2.replace(/%%IMG(\\d+)%%/g, function(_, i) { return '<img src=\"' + imgUrls2[parseInt(i)] + '\" alt=\"image\" loading=\"lazy\" style=\"max-width:100%;border-radius:8px;margin-top:6px\">'; });
   s2 = s2.replace(/%%URL(\\d+)%%/g, function(_, i) { return '<a href=\"' + urlList[parseInt(i)] + '\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color:#60a5fa;word-break:break-all\">' + urlList[parseInt(i)] + '</a>'; });
@@ -216,11 +231,12 @@ function renderBody(text) {
 function renderComment(comment, depth) {
   const el = document.createElement('div');
   el.className = 'comment';
-  const author = comment.author ? esc(comment.author) : '\u533f\u540d';
+  const author = comment.author ? esc(cleanReddit(comment.author)) : '\u533f\u540d';
   const body = renderBody(comment.body);
+  const orig = comment.originalBody ? renderBody(comment.originalBody) : null;
   const score = comment.score || 0;
   const date = comment.createdAt ? '<span style="font-size:.7rem;color:#78716c;margin-left:8px">' + formatDate(comment.createdAt) + '</span>' : '';
-  el.innerHTML = '<div class="comment-head"><span class="comment-author">' + author + '</span><span class="comment-score">' + score.toLocaleString() + ' 赞' + date + '</span></div><div class="comment-body' + (body ? '' : ' deleted') + '">' + (body || '[\u5185\u5bb9\u5df2\u5220\u9664]') + '</div>';
+  el.innerHTML = '<div class="comment-head"><span class="comment-author">' + author + '</span><span class="comment-score">' + score.toLocaleString() + ' 赞' + date + '</span></div>' + (orig ? '<div class="comment-original">' + orig + '</div>' : '') + '<div class="comment-body' + (body ? '' : ' deleted') + '">' + (body || '[\u5185\u5bb9\u5df2\u5220\u9664]') + '</div>';
   if (comment.replies && comment.replies.length > 0) {
     const btn = document.createElement('button');
     btn.className = 'comment-expand';
@@ -291,6 +307,7 @@ async function loadMore() {
 const modal = document.getElementById('modal');
 const modalImg = document.getElementById('modalImg');
 const modalYear = document.getElementById('modalYear');
+const modalPostedAt = document.getElementById('modalPostedAt');
 const modalUpvotes = document.getElementById('modalUpvotes');
 const modalDesc = document.getElementById('modalDesc');
 const modalTitle = document.getElementById('modalTitle');
@@ -319,6 +336,7 @@ async function openModal(photoId) {
   modalComments.innerHTML = '<div style="color:#57534e;font-size:.875rem;padding:16px 0">加载评论...</div>';
   commentsHeader.textContent = '评论';
   modalYear.textContent = '';
+  modalPostedAt.textContent = '';
   modalUpvotes.textContent = '';
   modalDesc.textContent = '';
   carouselDots.innerHTML = '';
@@ -344,6 +362,7 @@ async function openModal(photoId) {
     modalImg.alt = photo.title;
     modalTitle.textContent = photo.title;
     modalYear.textContent = photo.year || '';
+    modalPostedAt.textContent = photo.postedAt || '';
     modalUpvotes.textContent = (photo.upvotes > 0 ? photo.upvotes.toLocaleString() + ' 赞' : '');
     modalDesc.textContent = photo.description;
 
@@ -480,6 +499,16 @@ document.querySelectorAll('.sort-btn').forEach(function(btn) {
 fs.writeFileSync(OUT_FILE, html, "utf-8");
 console.log(`Built ${OUT_FILE}`);
 
+function cleanReddit(s) {
+  return String(s)
+    .replace(/[Rr]eddit/g, '')
+    .replace(/红迪/g, '')
+    .replace(/[\[\(]?已?被?[Rr]eddit删?除?[\]\)]?/g, '')
+    .replace(/\/?r\/\S+/g, '')
+    .replace(/\/?u\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ').trim();
+}
+
 function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
@@ -493,6 +522,8 @@ function renderBodyHtml(text) {
   s = s.replace(/(https?:\/\/\S+)/gi, function(m) {
     urlList.push(m); return '%%URL' + (urlList.length-1) + '%%';
   });
+  s = cleanReddit(s);
+  s = s.replace(/^译文[：:]\s*/, '');
   s = esc(s);
   s = s.replace(/%%IMG(\d+)%%/g, function(_, i) {
     return '<img src="' + imgUrls[parseInt(i)] + '" alt="image" loading="lazy" style="max-width:100%;border-radius:8px;margin-top:6px">';
@@ -514,11 +545,12 @@ function formatDate(iso) {
 }
 
 function renderCommentHtml(c) {
-  var author = c.author ? esc(c.author) : '\u533f\u540d';
+  var author = c.author ? esc(cleanReddit(c.author)) : '\u533f\u540d';
   var body = renderBodyHtml(c.body);
+  var orig = c.originalBody ? renderBodyHtml(c.originalBody) : null;
   var score = c.score || 0;
   var date = c.createdAt ? '<span style="font-size:.7rem;color:#78716c;margin-left:8px">' + formatDate(c.createdAt) + '</span>' : '';
-  var h = '<div class="comment"><div class="comment-head"><span class="comment-author">' + author + '</span><span class="comment-score">' + score.toLocaleString() + ' \u8d5e' + date + '</span></div><div class="comment-body' + (body ? '' : ' deleted') + '">' + (body || '[\u5185\u5bb9\u5df2\u5220\u9664]') + '</div>';
+  var h = '<div class="comment"><div class="comment-head"><span class="comment-author">' + author + '</span><span class="comment-score">' + score.toLocaleString() + ' \u8d5e' + date + '</span></div>' + (orig ? '<div class="comment-original">' + orig + '</div>' : '') + '<div class="comment-body' + (body ? '' : ' deleted') + '">' + (body || '[\u5185\u5bb9\u5df2\u5220\u9664]') + '</div>';
   if (c.replies && c.replies.length > 0) {
     h += '<div class="comment-replies">';
     c.replies.forEach(function(r) { h += renderCommentHtml(r); });
@@ -554,7 +586,7 @@ photos.forEach(function(photo) {
   } else {
     commentsHtml = '<div style="color:#a8a29e;font-size:.875rem;padding:8px 0">\u6682\u65e0\u8bc4\u8bba</div>';
   }
-  var pageHtml = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="google-site-verification" content="n_kuKOzSDcDFCpO8OGHoePUqILORSJSVlmMiRgvNS54" />\n<meta name="keywords" content="' + title + ',历史照片,老照片" />\n<title>' + title + ' - \u5f02\u56fd\u65e7\u5f71 | \u7f55\u89c1\u5386\u53f2\u8001\u7167\u7247</title>\n<meta name="description" content="' + desc + '">\n<meta property="og:title" content="' + title + '">\n<meta property="og:description" content="' + desc + '">\n<meta property="og:image" content="' + ogImg + '">\n<meta property="og:type" content="article">\n<meta property="og:url" content="' + canonical + '">\n<link rel="canonical" href="' + canonical + '">\n<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\ud83d\udcf7</text></svg>">\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-6C53SNFBNZ"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date);gtag("config","G-6C53SNFBNZ")</script>\n<style>\n*{margin:0;padding:0;box-sizing:border-box}\nbody{font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fafaf9;color:#1c1917;min-height:100vh}\n.page{max-width:640px;margin:0 auto;padding:16px}\n.back{margin-bottom:16px}\n.back a{color:#3b82f6;text-decoration:none;font-size:.875rem}\n.photo-img{margin-bottom:16px;background:#f5f5f4;border-radius:12px;overflow:hidden}\n.photo-img img{width:100%;display:block}\n.info{margin-bottom:20px}\n.info h1{font-size:1.2rem;font-weight:600;line-height:1.3;margin-bottom:8px}\n.info-desc{font-size:.9375rem;line-height:1.6;color:#57534e;margin-bottom:8px}\n.info-meta{font-size:.8125rem;color:#a8a29e}\nsection{margin-bottom:20px}\nsection h2{font-size:.875rem;font-weight:600;color:#a8a29e;margin-bottom:12px;letter-spacing:.02em}\n.comment{padding:12px 0;border-bottom:1px solid #e7e5e4}\n.comment:last-child{border-bottom:none}\n.comment-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px}\n.comment-author{font-size:.8125rem;font-weight:600;color:#1c1917;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.comment-score{font-size:.75rem;color:#78716c;flex-shrink:0}\n.comment-body{font-size:.875rem;line-height:1.5;color:#44403c}\n.comment-body.deleted{color:#d6d3d1;font-style:italic}\n.comment-body img{max-width:100%;border-radius:8px;margin-top:6px;display:block}\n.comment-replies{margin-top:4px;border-left:2px solid #e7e5e4;padding-left:12px}\n@media(prefers-color-scheme:dark){body{background:#0c0a09;color:#fafaf9}.photo-img{background:#292524}.info-desc{color:#a8a29e}.comment{border-color:#292524}.comment-author{color:#fafaf9}.comment-body{color:#d6d3d1}.comment-replies{border-color:#292524}}\n</style>\n</head>\n<body>\n<div class="page">\n<div class="back"><a href="/">\u2190 \u8fd4\u56de\u9996\u9875</a></div>\n<div class="photo-img">' + imagesHtml + '</div>\n<div class="info">\n<h1>' + title + '</h1>\n' + (desc ? '<p class="info-desc">' + desc + '</p>' : '') + '\n<div class="info-meta">' + (year ? year + ' \u00b7 ' : '') + upvotes + (commentTotal > 0 ? ' \u00b7 ' + commentTotal + ' \u6761\u8bc4\u8bba' : '') + '</div>\n</div>\n<section>\n<h2>\u8bc4\u8bba (' + commentTotal + ')</h2>\n' + commentsHtml + '\n</section>\n<div class="back" style="margin-top:24px"><a href="/">\u2190 \u8fd4\u56de\u9996\u9875</a></div>\n</div>\n</body>\n</html>';
+  var pageHtml = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="google-site-verification" content="n_kuKOzSDcDFCpO8OGHoePUqILORSJSVlmMiRgvNS54" />\n<meta name="keywords" content="' + title + ',历史照片,老照片" />\n<title>' + title + ' - \u5f02\u56fd\u65e7\u5f71 | \u7f55\u89c1\u5386\u53f2\u8001\u7167\u7247</title>\n<meta name="description" content="' + desc + '">\n<meta property="og:title" content="' + title + '">\n<meta property="og:description" content="' + desc + '">\n<meta property="og:image" content="' + ogImg + '">\n<meta property="og:type" content="article">\n<meta property="og:url" content="' + canonical + '">\n<link rel="canonical" href="' + canonical + '">\n<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\ud83d\udcf7</text></svg>">\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-6C53SNFBNZ"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date);gtag("config","G-6C53SNFBNZ")</script>\n<style>\n*{margin:0;padding:0;box-sizing:border-box}\nbody{font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fafaf9;color:#1c1917;min-height:100vh}\n.page{max-width:640px;margin:0 auto;padding:16px}\n.back{margin-bottom:16px}\n.back a{color:#3b82f6;text-decoration:none;font-size:.875rem}\n.photo-img{margin-bottom:16px;background:#f5f5f4;border-radius:12px;overflow:hidden}\n.photo-img img{width:100%;display:block}\n.info{margin-bottom:20px}\n.info h1{font-size:1.2rem;font-weight:600;line-height:1.3;margin-bottom:8px}\n.info-desc{font-size:.9375rem;line-height:1.6;color:#57534e;margin-bottom:8px}\n.info-meta{font-size:.8125rem;color:#a8a29e}\nsection{margin-bottom:20px}\nsection h2{font-size:.875rem;font-weight:600;color:#a8a29e;margin-bottom:12px;letter-spacing:.02em}\n.comment{padding:12px 0;border-bottom:1px solid #e7e5e4}\n.comment:last-child{border-bottom:none}\n.comment-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px}\n.comment-author{font-size:.8125rem;font-weight:600;color:#1c1917;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.comment-score{font-size:.75rem;color:#78716c;flex-shrink:0}\n.comment-original{font-size:.75rem;color:#a8a29e;margin-bottom:2px;line-height:1.4}\n.comment-body{font-size:.875rem;line-height:1.5;color:#44403c}\n.comment-body.deleted{color:#d6d3d1;font-style:italic}\n.comment-body img{max-width:100%;border-radius:8px;margin-top:6px;display:block}\n.comment-replies{margin-top:4px;border-left:2px solid #e7e5e4;padding-left:12px}\n@media(prefers-color-scheme:dark){body{background:#0c0a09;color:#fafaf9}.photo-img{background:#292524}.info-desc{color:#a8a29e}.comment{border-color:#292524}.comment-author{color:#fafaf9}.comment-body{color:#d6d3d1}.comment-replies{border-color:#292524}}\n</style>\n</head>\n<body>\n<div class="page">\n<div class="back"><a href="/">\u2190 \u8fd4\u56de\u9996\u9875</a></div>\n<div class="photo-img">' + imagesHtml + '</div>\n<div class="info">\n<h1>' + title + '</h1>\n' + (desc ? '<p class="info-desc">' + desc + '</p>' : '') + '\n<div class="info-meta\">' + (year ? year + ' \u00b7 ' : '') + upvotes + (photo.postedAt ? ' \u00b7 ' + photo.postedAt : '') + (commentTotal > 0 ? ' \u00b7 ' + commentTotal + ' \u6761\u8bc4\u8bba' : '') + '</div>\n</div>\n<section>\n<h2>\u8bc4\u8bba (' + commentTotal + ')</h2>\n' + commentsHtml + '\n</section>\n<div class="back" style="margin-top:24px"><a href="/">\u2190 \u8fd4\u56de\u9996\u9875</a></div>\n</div>\n</body>\n</html>';
   fs.writeFileSync(path.join(dir, 'index.html'), pageHtml, 'utf-8');
 });
 console.log('Generated ' + photos.length + ' photo pages');

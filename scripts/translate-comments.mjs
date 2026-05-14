@@ -53,7 +53,7 @@ async function translateWithModels(texts, postId, batchNum, totalBatches) {
   if (texts.length === 0) return texts;
 
   const batch = texts.map((t, i) => `[${i}] ${t}`).join("\n");
-  const prompt = `翻译以下英文评论为地道中文。保持原文语气，包括俚语、缩写、口语。每条前面有编号 [N]，只输出译文，格式保持 [N] 译文：\n\n${batch}`;
+  const prompt = `翻译以下英文评论为地道中文。保持原文语气，包括俚语、缩写、口语。每条前面有编号 [N]，只输出译文内容，格式为 [N] 后直接跟译文，不要加"译文："前缀。\n\n${batch}`;
 
   let lastError = null;
 
@@ -103,7 +103,7 @@ async function translateWithModels(texts, postId, batchNum, totalBatches) {
 async function translateField(text, label) {
   if (!text || /[\u4e00-\u9fff]/.test(text)) return text;
 
-  const prompt = `翻译以下英文为地道中文，只输出译文：\n\n${text}`;
+  const prompt = `翻译以下英文为地道中文，只输出译文内容，不要加"译文："等前缀：\n\n${text}`;
 
   for (const key of GEMINI_KEYS) {
     for (const model of MODELS) {
