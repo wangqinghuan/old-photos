@@ -251,9 +251,14 @@ async function processPost(post) {
     for (let j = 0; j < batch.length; j++) {
       const globalIdx = i + j + 1;
       if (translated[j] && translated[j] !== texts[j]) {
-        batch[j].body = translated[j];
-        batchTranslated++;
-        console.log(`→ [${model || "FAILED"}] Translated: ${translated[j].slice(0, 200)}`);
+        if (isTranslatable(texts[j])) {
+          batch[j].body = translated[j];
+          batchTranslated++;
+          console.log(`→ [${model || "FAILED"}] Translated: ${translated[j].slice(0, 200)}`);
+        } else {
+          batchFailed++;
+          console.log(`→ [SKIPPED] Non-translatable, keeping original`);
+        }
       } else {
         batchFailed++;
         if (translated[j] === null || translated[j] === texts[j]) {
