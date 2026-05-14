@@ -140,9 +140,9 @@ function cleanReddit(s) {
     .replace(/[Rr]eddit/g, '')
     .replace(/红迪/g, '')
     .replace(/[[(]?已?被?[Rr]eddit删?除?[])]?/g, '')
-    .replace(//?r/S+/g, '')
-    .replace(//?u/S+/g, '')
-    .replace(/s{2,}/g, ' ').trim();
+    .replace(/\/?r\/\S+/g, '')
+    .replace(/\/?u\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ').trim();
 }
 
 function renderMeta(photo) {
@@ -174,7 +174,7 @@ function renderBody(text) {
   var urlRe = /(https?:\/\/[^\s<>]+)/gi;
   s2 = s2.replace(urlRe, function(m) { urlList.push(m); return '%%URL' + (urlList.length-1) + '%%'; });
   s2 = cleanReddit(s2);
-  s2 = s2.replace(/^译文[：:]s*/, '');
+  s2 = s2.replace(/^译文[：:]\s*/, '');
   s2 = esc(s2);
   s2 = s2.replace(/%%IMG(\d+)%%/g, function(_, i) { return '<img src="' + imgUrls2[parseInt(i)] + '" alt="image" loading="lazy" style="max-width:100%;border-radius:8px;margin-top:6px">'; });
   s2 = s2.replace(/%%URL(\d+)%%/g, function(_, i) { return '<a href="' + urlList[parseInt(i)] + '" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;word-break:break-all">' + urlList[parseInt(i)] + '</a>'; });
