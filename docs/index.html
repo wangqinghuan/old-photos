@@ -139,7 +139,7 @@ function cleanReddit(s) {
   return String(s)
     .replace(/[Rr]eddit/g, '')
     .replace(/红迪/g, '')
-    .replace(/[[(]?已?被?[Rr]eddit删?除?[])]?/g, '')
+    .replace(/[\[\\(]?已?被?[Rr]eddit删?除?[\]\\)]?/g, '')
     .replace(/\/?r\/\S+/g, '')
     .replace(/\/?u\/\S+/g, '')
     .replace(/\s{2,}/g, ' ').trim();
