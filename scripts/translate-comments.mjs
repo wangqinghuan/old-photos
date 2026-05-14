@@ -58,7 +58,7 @@ function collectEnglish(comments) {
 function isTranslatable(text) {
   if (!text) return false;
   const t = text.trim();
-  if (/^https?:\/\/\S+$/i.test(t)) return false;
+  if (/^https?:\/\/\S+/i.test(t)) return false;
   if (/^[\s\p{So}\p{Sk}\p{Emoji_Presentation}]+$/u.test(t)) return false;
   if (/^[\s\-*_~`>#|]+$/.test(t)) return false;
   if (/^!\[.*\]\(.*\)$/.test(t)) return false;
@@ -115,9 +115,10 @@ ${batch}`;
           const m = line.match(/^\[(\d+)\]\s*(.*)/);
           if (m) {
             currentIdx = parseInt(m[1]);
-            parsed[currentIdx] = m[2];
+            parsed[currentIdx] = m[2].replace(/^译文[：:]\s*/, "");
           } else if (currentIdx >= 0 && line.trim()) {
-            parsed[currentIdx] += "\n" + line;
+            const stripped = line.replace(/^译文[：:]\s*/, "");
+            parsed[currentIdx] += "\n" + stripped;
           }
         }
 
