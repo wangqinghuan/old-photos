@@ -105,8 +105,8 @@ a.photo-card{text-decoration:none;color:inherit;display:block}
 .comment-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px}
 .comment-author{font-size:.8125rem;font-weight:600;color:#fafaf9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .comment-score{font-size:.75rem;color:#78716c;flex-shrink:0}
-.comment-original{font-size:.75rem;color:#57534e;margin-bottom:2px;line-height:1.4}
-.comment-original{font-size:.75rem;color:#57534e;margin-bottom:2px;line-height:1.4}
+.comment-original{font-size:.8125rem;color:#57534e;margin-bottom:2px;line-height:1.4}
+.comment-original{font-size:.8125rem;color:#57534e;margin-bottom:2px;line-height:1.4}
 .comment-body{font-size:.875rem;line-height:1.5;color:#d6d3d1}
 .comment-body.deleted{color:#57534e;font-style:italic}
 .comment-body img{max-width:100%;border-radius:8px;margin-top:6px;display:block}
