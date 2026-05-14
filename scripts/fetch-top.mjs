@@ -11,10 +11,14 @@ const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0";
 
 // Gemini config for Chinese-interest scoring
-const GEMINI_KEYS = [
-  "REVOKED_GEMINI_KEY_1",
-  "REVOKED_GEMINI_KEY_2",
-];
+const GEMINI_KEYS = process.env.GEMINI_KEYS
+  ? process.env.GEMINI_KEYS.split(",").map(k => k.trim()).filter(Boolean)
+  : [];
+
+if (!GEMINI_KEYS.length) {
+  console.warn("WARNING: GEMINI_KEYS not set. Chinese-interest scoring will use keyword fallback.");
+}
+
 const SCORE_MODEL = "gemini-2.0-flash";
 
 // China-related keywords to filter out

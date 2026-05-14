@@ -6,11 +6,15 @@ import axios from "axios";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, "..", "src", "data", "photos.json");
 
-const GEMINI_KEYS = [
-  "REVOKED_GEMINI_KEY_3",
-  "REVOKED_GEMINI_KEY_1",
-  "REVOKED_GEMINI_KEY_2",
-];
+const GEMINI_KEYS = process.env.GEMINI_KEYS
+  ? process.env.GEMINI_KEYS.split(",").map(k => k.trim()).filter(Boolean)
+  : [];
+
+if (!GEMINI_KEYS.length) {
+  console.error("ERROR: GEMINI_KEYS environment variable not set.");
+  console.error("Usage: GEMINI_KEYS=key1,key2,key3 node scripts/translate-comments.mjs");
+  process.exit(1);
+}
 
 const MODELS = [
   "gemini-3.1-flash-lite-preview",
