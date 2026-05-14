@@ -37,6 +37,11 @@ export default function PhotoCard({ photo }: Props) {
               onError={() => setImgError(true)}
             />
           )}
+          {photo.images?.length > 1 && (
+            <span className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-xs text-white font-mono">
+              {photo.images.length} 张照片
+            </span>
+          )}
           {photo.year && (
             <span className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full text-xs text-white font-mono">
               {photo.year}

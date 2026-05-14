@@ -53,24 +53,44 @@ export async function fetchPost(url) {
   const post = data[0].data.children[0].data;
   const rawComments = data[1].data.children;
 
-  const imageUrl = post.url;
-  const ext = getExtFromUrl(imageUrl);
-  const localFilename = `${postId}.${ext}`;
+  const comments = [];
+
+  let imageUrl, images;
+  if (post.is_gallery && post.media_metadata) {
+    const mediaIds = post.gallery_data?.items?.map(i => i.media_id) || Object.keys(post.media_metadata);
+    images = [];
+    for (let idx = 0; idx < mediaIds.length; idx++) {
+      const id = mediaIds[idx];
+      const meta = post.media_metadata[id];
+      if (!meta || !meta.s) continue;
+      const src = meta.s.u.replace(/&amp;/g, '&');
+      const cleanUrl = src.replace(/^https:\/\/preview\.redd\.it\//, 'https://i.redd.it/').replace(/\?.*$/, '');
+      const ext = getExtFromUrl(cleanUrl);
+      const filename = `${postId}_${idx}.${ext}`;
+      await downloadImage(cleanUrl, filename);
+      images.push(`/photos/${filename}`);
+    }
+    imageUrl = images[0] || '';
+  } else {
+    imageUrl = post.url;
+    const ext = getExtFromUrl(imageUrl);
+    const localFilename = `${postId}.${ext}`;
+    await downloadImage(imageUrl, localFilename);
+    imageUrl = `/photos/${localFilename}`;
+  }
 
   console.log(`\nTitle: ${post.title}`);
-  console.log(`Image: ${imageUrl}`);
-
-  await downloadImage(imageUrl, localFilename);
-
-  const comments = [];
+  if (images) console.log(`Gallery: ${images.length} images`);
   function walk(node) {
     if (node.kind === "t1") {
       const d = node.data;
+      const createdAt = d.created_utc ? new Date(d.created_utc * 1000).toISOString() : undefined;
       const comment = {
         id: d.id,
         author: d.author === "[deleted]" ? "[已删除]" : d.author,
         score: d.score || 0,
         body: (d.body && d.body !== "[removed]" && d.body !== "[deleted]") ? d.body : null,
+        createdAt,
         replies: [],
       };
       if (d.replies && typeof d.replies === "object") {
@@ -95,10 +115,11 @@ export async function fetchPost(url) {
     id: postId,
     title: post.title,
     description: post.selftext || post.title,
-    imageUrl: `/photos/${localFilename}`,
+    imageUrl,
     postedAt: new Date(post.created_utc * 1000).toISOString().split("T")[0],
     upvotes: post.score,
     year,
+    images: images && images.length > 1 ? images : undefined,
     comments,
   };
 

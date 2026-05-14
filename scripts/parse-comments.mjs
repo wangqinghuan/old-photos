@@ -13,11 +13,13 @@ const POSTS = [
 function walk(node) {
   if (node.kind !== "t1") return null;
   const d = node.data;
+  const createdAt = d.created_utc ? new Date(d.created_utc * 1000).toISOString() : undefined;
   const comment = {
     id: d.id,
     author: d.author === "[deleted]" ? "[已删除]" : d.author,
     score: d.score || 0,
     body: d.body && d.body !== "[removed]" && d.body !== "[deleted]" ? d.body : null,
+    createdAt,
     replies: [],
   };
   if (d.replies && typeof d.replies === "object" && d.replies.data?.children) {
