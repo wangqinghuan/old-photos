@@ -141,7 +141,8 @@ ${batch}
 
 只返回纯 JSON 数字数组，格式如 [8,3,6]，不要有任何其他文字。`;
 
-  for (const key of GEMINI_KEYS) {
+  for (let k = 0; k < GEMINI_KEYS.length; k++) {
+    const key = GEMINI_KEYS[k];
     try {
       const resp = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/${SCORE_MODEL}:generateContent?key=${key}`,

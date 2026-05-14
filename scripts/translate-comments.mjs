@@ -92,8 +92,10 @@ ${batch}`;
 
   let lastError = null;
 
-  for (const key of GEMINI_KEYS) {
-    for (const model of MODELS) {
+  for (const model of MODELS) {
+    const startKeyIdx = (batchNum - 1) % GEMINI_KEYS.length;
+    for (let k = 0; k < GEMINI_KEYS.length; k++) {
+      const key = GEMINI_KEYS[(startKeyIdx + k) % GEMINI_KEYS.length];
       try {
         const { data } = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -124,7 +126,7 @@ ${batch}`;
 
         const translated = texts.map((t, i) => parsed[i] || null);
 
-        // Validate translations: require 70%+ of translatable comments to pass
+        // Validate translations: require 50%+ of translatable comments to pass
         let validCount = 0;
         let translatableCount = 0;
         for (let i = 0; i < texts.length; i++) {
@@ -144,7 +146,6 @@ ${batch}`;
       } catch (e) {
         const status = e.response?.status;
         const msg = e.response?.data?.error?.message || e.message;
-        const keyShort = key.slice(0, 38) + '...';
         console.log(`  Batch ${batchNum}/${totalBatches}: [${model}] ${status} ${msg.slice(0, 60)}`);
         lastError = e;
         if (status === 400) {
@@ -164,8 +165,9 @@ async function translateField(text, label) {
 
   const prompt = `翻译以下英文为地道中文，保留原文的所有信息，不要省略任何内容，只输出译文：\n\n${text}`;
 
-  for (const key of GEMINI_KEYS) {
-    for (const model of MODELS) {
+  for (const model of MODELS) {
+    for (let k = 0; k < GEMINI_KEYS.length; k++) {
+      const key = GEMINI_KEYS[k];
       try {
         const { data } = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
